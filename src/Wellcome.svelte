@@ -4,31 +4,33 @@
   import Dialog from "./Dialog.svelte";
   import PlayerName from "./PlayerName.svelte";
 
-  import { options, overlay, timestamp } from "./stores.js";
+  import { optionsStore, overlayStore, timestampStore } from "./stores.js";
 
-  let dialogComponent = null;
-  let dialogOpened = true;
+  let dialogComponent = $derived(null);
+  let dialogVisible = $derived(true);
 
-  let playerNameComponent = null;
-  let playerName = $options.playerName;
+  let playerNameComponent = $derived(null);
+  let playerName = $derived($optionsStore.playerName);
 
   function input() {
-    $timestamp = Date.now();
-    $options.playerName = playerName;
+    if (playerName === $optionsStore.playerName) return;
+    $optionsStore.playerName = playerName;
+    $timestampStore = Date.now();
   }
 
-  function submit() {
+  function submit(event) {
+    event.preventDefault();
     if (playerName === "") return playerNameComponent.blink();
-    $overlay = null;
+    $overlayStore = null;
   }
 </script>
 
-{#if !dialogOpened}
+{#if !dialogVisible}
   <form
     class="wellcome content"
     in:blur|global
-    on:input={input}
-    on:submit|preventDefault={submit}
+    oninput={input}
+    onsubmit={submit}
   >
     <div class="section-1">
       <h1>digifall</h1>
@@ -36,7 +38,7 @@
     <div class="section-2"></div>
     <div class="section-3">
       <div class="col">
-        <PlayerName bind:this={playerNameComponent} bind:playerName />
+        <PlayerName bind:this={playerNameComponent} bind:value={playerName} />
         <button type="submit">start</button>
       </div>
     </div>
@@ -47,11 +49,11 @@
 <Dialog
   title="heads up!"
   bind:this={dialogComponent}
-  bind:opened={dialogOpened}
+  bind:visible={dialogVisible}
 >
   <div class="col">
     <p>Game doesn't contain tutorial mode!</p>
     <p>Target: understand how to play it</p>
-    <button on:click={dialogComponent.close}>continue</button>
+    <button onclick={dialogComponent.close}>continue</button>
   </div>
 </Dialog>

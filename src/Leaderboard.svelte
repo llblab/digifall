@@ -1,22 +1,63 @@
 <script>
-  import { tick } from "svelte";
+  import { compare } from "@digifall/leaderboard";
   import { blur, fly } from "svelte/transition";
 
-  import { KEYS, MAX_RECORDS, OVERLAYS } from "./constants.js";
-  import { compare, leaderboardStores } from "./leaderboard.js";
-  import { options, overlay } from "./stores.js";
   import VirtualScroll from "./VirtualScroll.svelte";
+
+  import { KEYS, MAX_RECORDS, OVERLAYS } from "./constants.js";
+  import { leaderboardStores, throttle } from "./leaderboard.js";
+  import { optionsStore, overlayStore } from "./stores.js";
 
   const PAGE_SIZE = 100;
   const PAGE_COUNTS = Math.ceil(MAX_RECORDS / PAGE_SIZE) + 1;
 
-  let page = 0;
-  let type = KEYS.highScore;
-  let startIndex;
-  let endIndex;
-  let virtualScrollComponent = null;
+  let page = $state(0);
+  let type = $state(KEYS.highScore);
+  let startIndex = $state(0);
+  let endIndex = $state(0);
+  let virtualScrollComponent = $state(null);
 
-  function switchType(event) {
+  let leaderboardStore = $derived(leaderboardStores[type]);
+  let sorted = $derived(
+    $leaderboardStore
+      .slice()
+      .sort((a, b) => compare(b, a))
+      .slice(0, MAX_RECORDS),
+  );
+  let mapped = $derived([
+    ...sorted.map((item, index) => ({
+      place: index === 999 ? 0 : index + 1,
+      ...item,
+    })),
+    ...Array.from({ length: MAX_RECORDS - sorted.length }).map(
+      (_, index, array) => ({
+        place: index === array.length - 1 ? 0 : index + sorted.length + 1,
+        playerName: "",
+        value: 0,
+      }),
+    ),
+  ]);
+
+  let selfIndex = $derived(
+    sorted.findIndex(
+      ({ playerName }) => playerName === $optionsStore[KEYS.playerName],
+    ),
+  );
+  let scrollToIndexThrottled = $derived(
+    virtualScrollComponent
+      ? throttle(virtualScrollComponent.scrollToIndex, 250)
+      : () => {},
+  );
+
+  $effect(() => {
+    updatePage(endIndex);
+  });
+
+  $effect(() => {
+    scrollToSelf();
+  });
+
+  function switchType(_event) {
     type = type === KEYS.highScore ? KEYS.highCombo : KEYS.highScore;
   }
 
@@ -54,7 +95,7 @@
   }
 
   function showMenu() {
-    $overlay = OVERLAYS.menu;
+    $overlayStore = OVERLAYS.menu;
   }
 
   function updatePage(endIndex) {
@@ -79,72 +120,34 @@
   function formatPlace(place) {
     if (place === 0 && selfIndex === -1) return "???";
     return (
-      Array.from({ length: 3 - place.toString().length })
+      Array.from({ length: 3 - place?.toString().length })
         .map(() => "0")
         .join("") + place
     );
   }
 
   function formatPlayerName(playerName, place) {
-    if (place === 0 && selfIndex === -1) return $options[KEYS.playerName];
+    if (place === 0 && selfIndex === -1) return $optionsStore[KEYS.playerName];
     return playerName;
   }
 
-  async function scrollToSelf(sorted) {
-    await tick();
+  function scrollToSelf() {
     virtualScrollComponent.scrollToIndex(
       selfIndex === -1 ? MAX_RECORDS - 1 : Math.max(selfIndex - 7, 0),
     );
   }
-
-  function throttle(cb, delay) {
-    let last = 0;
-    return (...args) => {
-      const now = Date.now();
-      if (now - last < delay) return;
-      last = now;
-      return cb(...args);
-    };
-  }
-
-  $: leaderboardStore = leaderboardStores[type];
-  $: sorted = $leaderboardStore
-    .slice()
-    .sort((a, b) => compare(b, a))
-    .slice(0, MAX_RECORDS);
-  $: mapped = [
-    ...sorted.map((item, index) => ({
-      place: index === 999 ? 0 : index + 1,
-      ...item,
-    })),
-    ...Array.from({ length: MAX_RECORDS - sorted.length }).map(
-      (_, index, array) => ({
-        place: index === array.length - 1 ? 0 : index + sorted.length + 1,
-        playerName: "",
-        value: 0,
-      }),
-    ),
-  ];
-  $: selfIndex = sorted.findIndex(
-    ({ playerName }) => playerName === $options[KEYS.playerName],
-  );
-  $: updatePage(endIndex);
-  $: scrollToSelf(sorted);
-  $: scrollToIndexThrottled = virtualScrollComponent
-    ? throttle(virtualScrollComponent.scrollToIndex, 250)
-    : () => {};
 </script>
 
 <div class="leaderboard content" in:blur>
   <div class="section-1">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       class="types"
       title="[switch leaderboard]"
       tabindex="0"
       role="button"
       in:fly|global={{ y: -48 }}
-      on:click={switchType}
+      onclick={switchType}
     >
       <span class="type" class:active={type === KEYS.highCombo}>combos</span>
       <span class="high">high &gt;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;</span
@@ -153,14 +156,14 @@
     </div>
   </div>
   <div class="section-2">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-noninteractive-element-to-interactive-role -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
     <ul
       class="pages"
       title="[select page]"
       tabindex="0"
       role="button"
-      on:click={selectPage}
+      onclick={selectPage}
     >
       {#each Array.from({ length: PAGE_COUNTS }) as _, index}
         {@const value = index > 9 ? 0 : index}
@@ -181,42 +184,42 @@
       bind:startIndex
       bind:endIndex
       bind:this={virtualScrollComponent}
-      let:item
     >
-      {@const { place, playerName, value } = item}
-      {@const self = playerName === $options[KEYS.playerName]}
-      {@const title =
-        "place: " +
-        place +
-        "\nname: " +
-        playerName.toUpperCase() +
-        "\nscore: " +
-        value}
-      <div
-        class={[
-          "grid",
-          {
-            first: place === 1,
-            second: place === 2,
-            third: place === 3,
-          },
-        ]}
-        {title}
-      >
-        <div class="place" style:color="var(--color-{getPlaceColor(place)})">
-          {formatPlace(place)}
+      {#snippet children({ place, playerName, value })}
+        {@const self = playerName === $optionsStore[KEYS.playerName]}
+        {@const title =
+          "place: " +
+          place +
+          "\nname: " +
+          playerName?.toUpperCase() +
+          "\nscore: " +
+          value}
+        <div
+          class={[
+            "grid",
+            {
+              first: place === 1,
+              second: place === 2,
+              third: place === 3,
+            },
+          ]}
+          {title}
+        >
+          <div class="place" style:color="var(--color-{getPlaceColor(place)})">
+            {formatPlace(place)}
+          </div>
+          <div class="player-name" class:self>
+            {formatPlayerName(playerName, place)}
+          </div>
+          <div class="bar" class:self></div>
+          <div class="record" class:self>{value}</div>
         </div>
-        <div class="player-name" class:self>
-          {formatPlayerName(playerName, place)}
-        </div>
-        <div class="bar" class:self></div>
-        <div class="record" class:self>{value}</div>
-      </div>
+      {/snippet}
     </VirtualScroll>
   </div>
   <div class="section-4">
     <div class="col">
-      <button title="[open menu]" on:click={showMenu} in:fly={{ y: 48 }}>
+      <button title="[open menu]" onclick={showMenu} in:fly={{ y: 48 }}>
         menu
       </button>
     </div>
@@ -236,16 +239,17 @@
     align-items: flex-end;
     justify-content: center;
     cursor: pointer;
-    filter: drop-shadow(var(--gloss));
-  }
 
-  .types:active .high,
-  .types:active .active {
-    color: var(--color-invis-1);
-  }
+    &:active .high,
+    &:active .active {
+      color: var(--color-invis-1);
+      text-shadow: 0 0 1px white;
+    }
 
-  .types:active .type:not(.active) {
-    color: var(--color-invis-1);
+    &:active .type:not(.active) {
+      color: var(--color-invis-1);
+      text-shadow: 0 0 1px var(--color-dark);
+    }
   }
 
   .high {
@@ -262,24 +266,24 @@
     right: 25rem;
     color: white;
     transition: top 200ms ease-in-out;
-  }
 
-  .type.active:first-child {
-    top: 2.5rem;
-  }
+    &.active:first-child {
+      top: 2.5rem;
+    }
 
-  .type:not(.active):first-child {
-    top: -5rem;
-    color: var(--color-dark);
-  }
+    &:not(.active):first-child {
+      top: -5rem;
+      color: var(--color-dark);
+    }
 
-  .type.active:last-child {
-    top: -2.5rem;
-  }
+    &.active:last-child {
+      top: -2.5rem;
+    }
 
-  .type:not(.active):last-child {
-    top: 6rem;
-    color: var(--color-dark);
+    &:not(.active):last-child {
+      top: 6rem;
+      color: var(--color-dark);
+    }
   }
 
   .pages {
@@ -300,24 +304,23 @@
     border: 1rem solid transparent;
     color: var(--color);
     cursor: pointer;
-    filter: drop-shadow(var(--gloss));
     font-weight: bold;
-  }
 
-  .page.active {
-    border-color: var(--color);
-  }
+    &.active {
+      border-color: var(--color);
 
-  .page.active:active {
-    border-color: var(--color-invis-2);
-    box-shadow:
-      0 0 1px var(--color),
-      inset 0 0 1px var(--color);
-  }
+      &:active {
+        border-color: var(--color-invis-2);
+        box-shadow:
+          0 0 1px var(--color),
+          inset 0 0 1px var(--color);
+      }
+    }
 
-  .page:active {
-    color: var(--color-invis-2);
-    text-shadow: 0 0 1px var(--color);
+    &:active {
+      color: var(--color-invis-2);
+      text-shadow: 0 0 1px var(--color);
+    }
   }
 
   .board {
@@ -340,18 +343,18 @@
     height: 14rem;
     padding: 2rem 0;
     grid-template: "a b b" auto "a c d" auto / 18rem 1fr auto;
-  }
 
-  .grid.first {
-    zoom: 1.18;
-  }
+    &.first {
+      zoom: 1.18;
+    }
 
-  .grid.second {
-    zoom: 1.12;
-  }
+    &.second {
+      zoom: 1.12;
+    }
 
-  .grid.third {
-    zoom: 1.06;
+    &.third {
+      zoom: 1.06;
+    }
   }
 
   .place {
@@ -380,10 +383,10 @@
     border-right: 0.75rem solid white;
     margin-right: 2rem;
     grid-area: c;
-  }
 
-  .bar.self {
-    border-color: var(--color-random);
+    &.self {
+      border-color: var(--color-random);
+    }
   }
 
   .record {
@@ -393,14 +396,14 @@
     grid-area: d;
     text-align: right;
     text-indent: 0;
+
+    &.self::before {
+      border-color: currentcolor;
+      color: inherit;
+    }
   }
 
   .self {
     color: var(--color-random);
-  }
-
-  .record.self::before {
-    border-color: currentcolor;
-    color: inherit;
   }
 </style>

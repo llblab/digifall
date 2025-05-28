@@ -1,10 +1,97 @@
-import { get } from "svelte/store";
-
 import { CORE, INITIAL_VALUES, KEYS, PHASES } from "./constants.js";
 
 const { abs, sign, trunc } = Math;
 
 // UTILITIES ///////////////////////////////////////////////////////////////////
+
+/**
+ * A single card placed on the board.
+ * @typedef {Object} Card
+ * @property {number} x
+ * @property {number} y
+ * @property {number} value
+ * @property {number} [nextValue]
+ * @property {number} duration
+ */
+
+/**
+ * 2D index field mapping [x][y] -> card index (or undefined for empty slot).
+ * @typedef {(Array<(number|undefined)>)} IndexColumn
+ * @typedef {IndexColumn[]} IndexField
+ */
+
+/**
+ * A log entry created after blink phase: either a match summary or an extra energy entry.
+ * @typedef {Object} LogEntryMatch
+ * @property {number[]} counts
+ * @property {number[]} digits
+ * @property {number} sum
+ */
+
+/**
+ * @typedef {Object} LogEntryExtra
+ * @property {number} extra
+ */
+
+/**
+ * Union of possible log entry kinds.
+ * @typedef {(LogEntryMatch | LogEntryExtra)} LogEntry
+ */
+
+/**
+ * UI-ready combo row entry.
+ * @typedef {Object} ComboRow
+ * @property {number} combo
+ * @property {number} key
+ */
+
+/**
+ * Generic store-like shape used throughout core logic.
+ * Compatible with Svelte stores extended with a synchronous `get()` helper.
+ * @template T
+ * @typedef {Object} StoreLike
+ * @property {() => T} get
+ * @property {(value: T) => any} [set]
+ * @property {(updater: (value: T) => T) => any} [update]
+ * @property {(run: (value: T) => void) => any} [subscribe]
+ */
+
+/**
+ * Energy store value.
+ * @typedef {Object} Energy
+ * @property {number} buffer
+ * @property {number} value
+ */
+
+/**
+ * Score store value.
+ * @typedef {Object} Score
+ * @property {number} buffer
+ * @property {number} value
+ */
+
+/**
+ * Minimal runtime shape used by core logic.
+ * Only properties accessed by core are declared.
+ * @typedef {Object} Game
+ * @property {StoreLike<Card[]>} cardsStore
+ * @property {StoreLike<Energy>} energyStore
+ * @property {StoreLike<LogEntry[]>} logStore
+ * @property {StoreLike<Set<number>>} matchedIndexesStore
+ * @property {StoreLike<string|number[]|Uint8Array>} movesStore
+ * @property {StoreLike<{ playerName?: string, cluster?: boolean, rapid?: boolean, sound?: boolean }>} optionsStore
+ * @property {StoreLike<number>} phaseStore
+ * @property {StoreLike<number|null>} plusIndexStore
+ * @property {StoreLike<Record<string, any>>} recordsStore
+ * @property {StoreLike<Score>} scoreStore
+ * @property {StoreLike<number|undefined>} seedStore
+ * @property {StoreLike<number>} timestampStore
+ * @property {boolean} [ready]
+ * @property {import('./sounds.js').Sounds} [sounds]
+ * @property {number} [moveCount]
+ * @property {null|Array<number>} [movesInitial]
+ * @property {(column: number) => number} [getNextCardValue]
+ */
 
 export function getRandom(prev = 0) {
   return (prev * 16807 + 19487171) % 2147483647;
@@ -40,8 +127,16 @@ export function squashIntegers(integers) {
 
 // CHECK LOGIC /////////////////////////////////////////////////////////////////
 
+/**
+ * Utility that executes side effects instantly or with animation timing depending on `rapid` mode.
+ * Returns the value or schedules the callback accordingly.
+ * @param {Game} game
+ * @param {number|Function|Object|undefined} value
+ * @param {number} [timeout=0]
+ * @returns {any}
+ */
 export function checkRapid(game, value, timeout = 0) {
-  const { rapid } = get(game.options);
+  const { rapid } = game.optionsStore.get();
   const insta = !rapid && game.movesInitial === null && timeout > 0;
   switch (typeof value) {
     case "undefined":
@@ -55,9 +150,15 @@ export function checkRapid(game, value, timeout = 0) {
   }
 }
 
+/**
+ * Plays a callback or array of callbacks depending on sound settings and phase.
+ * @param {Game} game
+ * @param {Function|Function[]|undefined} callback
+ * @param {{ muteRapid?: boolean }} [options]
+ */
 export function checkSound(game, callback, { muteRapid = false } = {}) {
   if (!callback) return;
-  const { sound, rapid } = get(game.options);
+  const { sound, rapid } = game.optionsStore.get();
   if (muteRapid && rapid) return;
   if (!sound || game.movesInitial !== null || !game.ready) return;
   if (Array.isArray(callback)) {
@@ -68,45 +169,55 @@ export function checkSound(game, callback, { muteRapid = false } = {}) {
 }
 
 function checkLocalScore(game, type, value) {
-  const $records = get(game.records);
-  const valuePrev = $records[type][KEYS.value];
+  const records = game.recordsStore.get();
+  const valuePrev = records[type][KEYS.value];
   if (valuePrev >= value) return;
-  $records[type] = {
-    [KEYS.moves]: get(game.moves),
-    [KEYS.playerName]: get(game.options).playerName,
-    [KEYS.timestamp]: get(game.timestamp),
+  records[type] = {
+    [KEYS.moves]: game.movesStore.get(),
+    [KEYS.playerName]: game.optionsStore.get().playerName,
+    [KEYS.timestamp]: game.timestampStore.get(),
     [KEYS.value]: value,
   };
-  game.records.set($records);
+  game.recordsStore.set(records);
 }
 
 // CARDS LOGIC /////////////////////////////////////////////////////////////////
 
+/**
+ * Returns next value in the card cycle [0..CORE.maxValue].
+ * @param {number} value
+ * @returns {number}
+ */
 export function getNextCardValue(value) {
   return value < CORE.maxValue ? value + 1 : 0;
 }
 
-export function getFieldFromCards($cards) {
+/**
+ * Builds a 2D index field from the flat list of cards for quick neighbor access.
+ * @param {Card[]} cards
+ * @returns {IndexField}
+ */
+export function getFieldFromCards(cards) {
   const field = Array.from({ length: CORE.columns }, () =>
     Array.from({ length: 2 * CORE.rows }),
   );
-  $cards.forEach(({ x, y }, index) => (field[x][y] = index));
+  cards.forEach(({ x, y }, index) => (field[x][y] = index));
   return field;
 }
 
-function getFallenCards(game, $cards) {
-  const $phase = get(game.phase);
-  const { rapid } = get(game.options);
-  const field = getFieldFromCards($cards);
+function getFallenCards(game, cards) {
+  const phase = game.phaseStore.get();
+  const { rapid } = game.optionsStore.get();
+  const field = getFieldFromCards(cards);
   const result = [];
   const set = new Set();
   field.forEach((column) => {
     let count = 0;
     column.forEach((index, y) => {
       if (index === undefined) return ++count;
-      const { x, value } = $cards[index];
+      const { x, value } = cards[index];
       const duration =
-        rapid || game.movesInitial || $phase !== PHASES.fall
+        rapid || game.movesInitial || phase !== PHASES.fall
           ? 0
           : 100 * (2 * count) ** 0.5;
       result[index] = {
@@ -127,23 +238,28 @@ function getFallenCards(game, $cards) {
   return result;
 }
 
-function getMatchedFromCards($cards) {
-  const field = getFieldFromCards($cards);
+/**
+ * Finds groups of adjacent cards with the same value and returns matched indexes when size equals the value.
+ * @param {Card[]} cards
+ * @returns {{ counts: number, digits: Set<number>, indexes: Set<number> }}
+ */
+function getMatchedFromCards(cards) {
+  const field = getFieldFromCards(cards);
   const escape = new Set();
   const groups = [];
   const assort = (group, index, askedValue) => {
     if (escape.has(index)) return;
-    const { x, y, value } = $cards[index];
+    const { x, y, value } = cards[index];
     if (askedValue !== undefined && askedValue !== value) return;
     if (!groups[group]) groups[group] = { value, indexes: new Set() };
     groups[group].indexes.add(index);
     escape.add(index);
-    if (y < CORE.columns - 1) assort(group, field[x][y + 1], value);
+    if (y < CORE.rows - 1) assort(group, field[x][y + 1], value);
     if (x < CORE.columns - 1) assort(group, field[x + 1][y], value);
     if (y > 0) assort(group, field[x][y - 1], value);
     if (x > 0) assort(group, field[x - 1][y], value);
   };
-  $cards.forEach((_, index) => assort(index, index));
+  cards.forEach((_, index) => assort(index, index));
   return groups.reduce(
     (result, group) => {
       if (group.value === group.indexes.size) {
@@ -161,15 +277,22 @@ function getMatchedFromCards($cards) {
   );
 }
 
-function getMatchedCards(game, $cards, $matchedIndexes) {
-  const counts = [0, 0, 0, 0, 0, 0];
+/**
+ * Returns a new board after collapsing matched indexes (matched cards move up within their columns and increment value by column rule).
+ * @param {Game} game
+ * @param {Card[]} cards
+ * @param {Set<number>} matchedIndexes
+ * @returns {Card[]}
+ */
+function getMatchedCards(game, cards, matchedIndexes) {
+  const counts = Array.from({ length: CORE.columns }, () => 0);
   const getNextY = (nextX) =>
     counts[nextX] +
-    $cards
+    cards
       .filter(({ x }) => x === nextX)
       .sort(({ y: y1 }, { y: y2 }) => y2 - y1)[0].y;
-  return $cards.map((card, index) => {
-    if (card.y < CORE.rows && $matchedIndexes.has(index)) {
+  return cards.map((card, index) => {
+    if (card.y < CORE.rows && matchedIndexes.has(index)) {
       ++counts[card.x];
       return {
         x: card.x,
@@ -182,24 +305,37 @@ function getMatchedCards(game, $cards, $matchedIndexes) {
   });
 }
 
-function getClusteredCards(game, $cards) {
-  if (!get(game.options).cluster) return $cards;
-  const field = getFieldFromCards($cards);
-  return $cards.map((card) => ({
+/**
+ * Augments cards with cluster info if `cluster` option is enabled.
+ * @param {Game} game
+ * @param {Card[]} cards
+ * @returns {Card[]}
+ */
+function getClusteredCards(game, cards) {
+  if (!game.optionsStore.get().cluster) return cards;
+  const field = getFieldFromCards(cards);
+  return cards.map((card) => ({
     ...card,
-    cluster: getCluster($cards, field, card),
+    cluster: getCluster(cards, field, card),
   }));
 }
 
-function getCluster($cards, field, { x, y, value }) {
+/**
+ * Computes adjacency flags for a single card.
+ * @param {Card[]} cards
+ * @param {IndexField} field
+ * @param {Card} card
+ * @returns {{ top: boolean, right: boolean, bottom: boolean, left: boolean }}
+ */
+function getCluster(cards, field, { x, y, value }) {
   const topIndex = y === CORE.rows - 1 ? -1 : field[x][y + 1];
   const rightIndex = x === CORE.columns - 1 ? -1 : field[x + 1][y];
   const bottomIndex = y === 0 ? -1 : field[x][y - 1];
   const leftIndex = x === 0 ? -1 : field[x - 1][y];
-  const topValue = topIndex > -1 ? $cards[topIndex].value : NaN;
-  const rightValue = rightIndex > -1 ? $cards[rightIndex].value : NaN;
-  const bottomValue = bottomIndex > -1 ? $cards[bottomIndex].value : NaN;
-  const leftValue = leftIndex > -1 ? $cards[leftIndex].value : NaN;
+  const topValue = topIndex > -1 ? cards[topIndex].value : NaN;
+  const rightValue = rightIndex > -1 ? cards[rightIndex].value : NaN;
+  const bottomValue = bottomIndex > -1 ? cards[bottomIndex].value : NaN;
+  const leftValue = leftIndex > -1 ? cards[leftIndex].value : NaN;
   return {
     top: topValue === value,
     right: rightValue === value,
@@ -214,29 +350,34 @@ function getDiffFromBuffer(buffer) {
   return sign(buffer) * trunc(abs(buffer) ** 0.5);
 }
 
+/**
+ * Handles energy buffer draining with timing depending on phase and rapid mode.
+ * @param {Game} game
+ * @param {Energy} param1
+ */
 function doEnergyLogic(game, { buffer, value }) {
-  const $phase = get(game.phase);
-  const { rapid } = get(game.options);
+  const phase = game.phaseStore.get();
+  const { rapid } = game.optionsStore.get();
   const diff =
     rapid || game.movesInitial
       ? buffer
-      : $phase === PHASES.gameOver
+      : phase === PHASES.gameOver
         ? sign(buffer)
         : getDiffFromBuffer(buffer);
-  if ($phase === PHASES.extra) {
+  if (phase === PHASES.extra) {
     if (buffer === 0) {
-      checkRapid(game, () => game.phase.set(PHASES.combo), 800);
+      checkRapid(game, () => game.phaseStore.set(PHASES.combo), 800);
       return;
     }
-    game.log.update(($log) => {
-      const lastIndex = $log.length - 1;
-      const { extra } = $log[lastIndex];
-      $log[lastIndex] = { extra: extra - diff };
-      return $log;
+    game.logStore.update((log) => {
+      const lastIndex = log.length - 1;
+      const { extra } = log[lastIndex];
+      log[lastIndex] = { extra: extra - diff };
+      return log;
     });
   }
   if (buffer === 0) {
-    if ($phase === PHASES.gameOver) {
+    if (phase === PHASES.gameOver) {
       checkSound(game, () => setTimeout(game.sounds.playGameOver, 600));
     }
     return;
@@ -244,50 +385,62 @@ function doEnergyLogic(game, { buffer, value }) {
   checkRapid(
     game,
     () => {
-      game.energy.set({
+      game.energyStore.set({
         buffer: buffer - diff,
         value: value + diff,
       });
     },
-    $phase === PHASES.gameOver ? 200 : 32,
+    phase === PHASES.gameOver ? 200 : 32,
   );
 }
 
 // PHASE LOGIC /////////////////////////////////////////////////////////////////
 
+/**
+ * Initial phase: switch to idle asynchronously to allow subscribers to attach.
+ * @param {Game} game
+ */
 function doInitialPhase(game) {
-  setTimeout(() => game.phase.set(PHASES.idle), 0);
+  setTimeout(() => game.phaseStore.set(PHASES.idle), 0);
 }
 
+/**
+ * Idle logic: reset animations, update highs, play reset sound.
+ * @param {Game} game
+ */
 function doIdlePhase(game) {
   if (game.movesInitial !== null) {
     if (game.moveCount < game.movesInitial.length) {
-      game.plusIndex.set(game.movesInitial[game.moveCount++]);
-      game.energy.update(({ buffer, value }) => ({
+      game.plusIndexStore.set(game.movesInitial[game.moveCount++]);
+      game.energyStore.update(({ buffer, value }) => ({
         buffer,
         value: value - 10,
       }));
-      game.phase.set(PHASES.plus);
+      game.phaseStore.set(PHASES.plus);
       return;
     }
     game.movesInitial = null;
-    checkLocalScore(game, KEYS.highScore, get(game.score).value);
+    checkLocalScore(game, KEYS.highScore, game.scoreStore.get().value);
     return;
   }
-  game.cards.update(($cards) =>
-    $cards.map((card) => ((card.duration = 0), card)),
+  game.cardsStore.update((cards) =>
+    cards.map((card) => ({ ...card, duration: 0 })),
   );
-  checkLocalScore(game, KEYS.highScore, get(game.score).value);
+  checkLocalScore(game, KEYS.highScore, game.scoreStore.get().value);
   checkSound(game, game.sounds.reset);
 }
 
+/**
+ * Plus phase: apply +1 to selected card and proceed to blink.
+ * @param {Game} game
+ */
 function doPlusPhase(game) {
-  game.plusIndex.update(($plusIndex) => {
-    game.cards.update(($cards) =>
+  game.plusIndexStore.update((plusIndex) => {
+    game.cardsStore.update((cards) =>
       getClusteredCards(
         game,
-        $cards.map((card, index) => {
-          if (index !== $plusIndex) return card;
+        cards.map((card, index) => {
+          if (index !== plusIndex) return card;
           const value = getNextCardValue(card.value);
           return {
             ...card,
@@ -298,22 +451,26 @@ function doPlusPhase(game) {
         }),
       ),
     );
-    return undefined;
+    return null;
   });
-  game.phase.set(PHASES.blink);
+  game.phaseStore.set(PHASES.blink);
 }
 
+/**
+ * Blink phase: detect matches, push to log, adjust energy, handle transitions.
+ * @param {Game} game
+ */
 function doBlinkPhase(game) {
-  const $cards = get(game.cards);
-  let { counts, digits, indexes } = getMatchedFromCards($cards);
-  game.matchedIndexes.set(indexes);
-  const { value } = get(game.energy);
+  const cards = game.cardsStore.get();
+  let { counts, digits, indexes } = getMatchedFromCards(cards);
+  game.matchedIndexesStore.set(indexes);
+  const { value } = game.energyStore.get();
   if (indexes.size > 0) {
     const indexesArray = Array.from(indexes);
-    game.log.update(($log) =>
-      $log.concat(
+    game.logStore.update((log) =>
+      log.concat(
         indexesArray.reduce((result, index) => {
-          const card = $cards[index];
+          const card = cards[index];
           result[card.value] = (result[card.value] || 0) + card.value;
           result.sum = (result.sum || 0) + card.value;
           result.counts = counts;
@@ -323,93 +480,122 @@ function doBlinkPhase(game) {
       ),
     );
     const buffer = indexesArray.reduce(
-      (result, index) => result + $cards[index].value,
+      (result, index) => result + cards[index].value,
       0,
     );
-    checkRapid(game, () => game.energy.set({ buffer, value }), 400);
-    checkRapid(game, () => game.phase.set(PHASES.match), 800);
+    checkRapid(game, () => game.energyStore.set({ buffer, value }), 400);
+    checkRapid(game, () => game.phaseStore.set(PHASES.match), 800);
     checkSound(game, [game.sounds.playWordUp, game.sounds.playBlink], {
       muteRapid: true,
     });
     return;
   }
   if (value > 100) {
-    game.phase.set(PHASES.extra);
+    game.phaseStore.set(PHASES.extra);
     return;
   }
-  if (get(game.log).length > 0) {
-    game.phase.set(PHASES.combo);
+  if (game.logStore.get().length > 0) {
+    game.phaseStore.set(PHASES.combo);
     return;
   }
   if (value < 10) {
-    game.phase.set(PHASES.gameOver);
+    game.phaseStore.set(PHASES.gameOver);
     return;
   }
-  game.phase.set(PHASES.idle);
+  game.phaseStore.set(PHASES.idle);
 }
 
+/**
+ * Match phase: transform matched cards into next values and clear matches.
+ * @param {Game} game
+ */
 function doMatchPhase(game) {
-  game.matchedIndexes.update(($matchedIndexes) => {
-    game.cards.update(($cards) =>
-      getClusteredCards(game, getMatchedCards(game, $cards, $matchedIndexes)),
+  game.matchedIndexesStore.update((matchedIndexes) => {
+    game.cardsStore.update((cards) =>
+      getClusteredCards(game, getMatchedCards(game, cards, matchedIndexes)),
     );
     return new Set();
   });
-  checkRapid(game, () => game.phase.set(PHASES.fall), 400);
+  checkRapid(game, () => game.phaseStore.set(PHASES.fall), 400);
 }
 
+/**
+ * Fall phase: apply gravity-like falling and proceed to blink.
+ * @param {Game} game
+ */
 function doFallPhase(game) {
-  game.cards.update(($cards) =>
-    getClusteredCards(game, getFallenCards(game, $cards)),
+  game.cardsStore.update((cards) =>
+    getClusteredCards(game, getFallenCards(game, cards)),
   );
-  checkRapid(game, () => game.phase.set(PHASES.blink), 400);
+  checkRapid(game, () => game.phaseStore.set(PHASES.blink), 400);
 }
 
+/**
+ * Extra phase: convert energy overflow to combo log.
+ * @param {Game} game
+ */
 function doExtraPhase(game) {
-  game.energy.update(({ value }) => ({ buffer: 100 - value, value }));
-  game.log.update(($log) => $log.concat({ extra: 100 }));
+  game.energyStore.update(({ value }) => ({ buffer: 100 - value, value }));
+  game.logStore.update((log) => log.concat({ extra: 100 }));
   checkSound(game, game.sounds.playWordUp, { muteRapid: true });
 }
 
-export function getComboFromLog($log) {
-  return $log.reduce(
+/**
+ * Calculates combo value from the log.
+ * @param {LogEntry[]} log
+ * @returns {number}
+ */
+export function getComboFromLog(log) {
+  return log.reduce(
     (result, { counts, extra, sum }, index) =>
       result + (index + 1) * (sum || extra) * (counts || 1),
     0,
   );
 }
 
+/**
+ * Combo phase: move log value into score buffer and transition to score phase.
+ * @param {Game} game
+ */
 function doComboPhase(game) {
-  const $log = get(game.log);
-  const combo = getComboFromLog($log);
-  game.score.update(({ value }) => ({
+  const log = game.logStore.get();
+  const combo = getComboFromLog(log);
+  game.scoreStore.update(({ value }) => ({
     buffer: combo,
     value,
   }));
   checkLocalScore(game, KEYS.highCombo, combo);
   checkRapid(
     game,
-    () => game.phase.set(PHASES.score),
-    $log.length > 1 ? 800 : 0,
+    () => game.phaseStore.set(PHASES.score),
+    log.length > 1 ? 800 : 0,
   );
   checkSound(game, game.sounds.playWordUp, { muteRapid: true });
 }
 
+/**
+ * Score phase: ensure score subscribers tick when there is a non-trivial log.
+ * @param {Game} game
+ */
 function doScorePhase(game) {
-  if (get(game.log).length < 2) return;
-  game.score.update(($score) => ({ ...$score }));
+  if (game.logStore.get().length < 2) return;
+  game.scoreStore.update((score) => ({ ...score }));
 }
 
+/**
+ * GameOver phase: drain remaining energy into score.
+ * @param {Game} game
+ */
 function doGameOverPhase(game) {
   checkRapid(
     game,
     () => {
-      game.energy.update(({ value }) => ({
+      game.energyStore.update(({ value }) => ({
         buffer: -value,
         value,
       }));
-      game.score.update(({ value }) => ({
-        buffer: get(game.energy).value,
+      game.scoreStore.update(({ value }) => ({
+        buffer: game.energyStore.get().value,
         value,
       }));
     },
@@ -430,24 +616,39 @@ const PHASE_LOGICS = {
   [PHASES.gameOver]: doGameOverPhase,
 };
 
-function doPhaseLogic(game, $phase) {
-  PHASE_LOGICS[$phase](game);
+/**
+ * Dispatches phase logic by phase id.
+ * @param {Game} game
+ * @param {number} phase
+ */
+function doPhaseLogic(game, phase) {
+  PHASE_LOGICS[phase](game);
 }
 
 // PLUS INDEX LOGIC ////////////////////////////////////////////////////////////
 
-function doPlusIndexLogic(game, $plusIndex) {
-  if ($plusIndex === undefined || game.movesInitial !== null) return;
-  let $moves = get(game.moves);
-  $moves = Array.isArray($moves) ? $moves : getArrayFromBase64($moves);
-  $moves.push($plusIndex);
-  game.moves.set(getBase64FromArray($moves));
-  game.energy.update(($energy) => ({ ...$energy, buffer: -10 }));
-  checkRapid(game, () => game.phase.set(PHASES.plus), 400);
+/**
+ * Handles user action: writing plusIndex into moves and transition to plus phase.
+ * @param {Game} game
+ * @param {number|null} plusIndex
+ */
+function doPlusIndexLogic(game, plusIndex) {
+  if (plusIndex === null || game.movesInitial !== null) return;
+  let moves = game.movesStore.get();
+  moves = Array.isArray(moves) ? moves : getArrayFromBase64(moves);
+  moves.push(plusIndex);
+  game.movesStore.set(getBase64FromArray(moves));
+  game.energyStore.update((energy) => ({ ...energy, buffer: -10 }));
+  checkRapid(game, () => game.phaseStore.set(PHASES.plus), 400);
 }
 
 // SCORE LOGIC /////////////////////////////////////////////////////////////////
 
+/**
+ * Returns animation time depending on score buffer diff step.
+ * @param {number} diff
+ * @returns {number}
+ */
 function getTimeFromDiff(diff) {
   switch (abs(diff)) {
     case 1:
@@ -470,20 +671,25 @@ function getTimeFromDiff(diff) {
   }
 }
 
+/**
+ * Drains score buffer applying timings. Handles transitions between score and next phase.
+ * @param {Game} game
+ * @param {Score} param1
+ */
 function doScoreLogic(game, { buffer, value }) {
-  const $phase = get(game.phase);
-  if ($phase !== PHASES.gameOver && $phase !== PHASES.score) return;
+  const phase = game.phaseStore.get();
+  if (phase !== PHASES.gameOver && phase !== PHASES.score) return;
   if (buffer === 0) {
-    if ($phase === PHASES.gameOver) {
+    if (phase === PHASES.gameOver) {
       checkLocalScore(game, KEYS.highScore, value);
       return;
     }
     checkRapid(
       game,
       () => {
-        game.log.set([]);
-        game.phase.set(
-          get(game.energy).value < 10 ? PHASES.gameOver : PHASES.idle,
+        game.logStore.set([]);
+        game.phaseStore.set(
+          game.energyStore.get().value < 10 ? PHASES.gameOver : PHASES.idle,
         );
         checkSound(game, game.sounds.playTurnOn);
       },
@@ -491,28 +697,33 @@ function doScoreLogic(game, { buffer, value }) {
     );
     return;
   }
-  const { rapid } = get(game.options);
+  const { rapid } = game.optionsStore.get();
   const diff =
     rapid || game.movesInitial
       ? buffer
-      : $phase === PHASES.gameOver
+      : phase === PHASES.gameOver
         ? sign(buffer)
         : getDiffFromBuffer(buffer);
   checkRapid(
     game,
     () => {
-      game.score.set({
+      game.scoreStore.set({
         buffer: buffer - diff,
         value: value + diff,
       });
     },
-    $phase === PHASES.gameOver ? 200 : getTimeFromDiff(diff),
+    phase === PHASES.gameOver ? 200 : getTimeFromDiff(diff),
   );
   checkSound(game, game.sounds.playBleep, { muteRapid: true });
 }
 
 // SEED LOGIC //////////////////////////////////////////////////////////////////
 
+/**
+ * Derives deterministic seed from playerName and timestamp.
+ * @param {{ playerName: string, timestamp: number }} param0
+ * @returns {number|undefined}
+ */
 export function getSeed({ playerName, timestamp }) {
   return (
     playerName &&
@@ -527,15 +738,20 @@ export function getSeed({ playerName, timestamp }) {
   );
 }
 
-function getInitialRandoms($seed) {
+function getInitialRandoms(seed) {
   let count = 0;
-  const result = [getRandom($seed)];
+  const result = [getRandom(seed)];
   while (count < CORE.columns - 1) result.push(getRandom(2 * result[count++]));
   return result;
 }
 
-function createGetNextCardValue($seed) {
-  let randoms = getInitialRandoms($seed);
+/**
+ * Creates deterministic next-card-value generator based on seed.
+ * @param {number} seed
+ * @returns {(column: number) => number}
+ */
+function createGetNextCardValue(seed) {
+  let randoms = getInitialRandoms(seed);
   return (column) => {
     if (column < 0 || CORE.columns - 1 < column) return;
     let result = randoms[column];
@@ -544,6 +760,11 @@ function createGetNextCardValue($seed) {
   };
 }
 
+/**
+ * Builds initial deck of cards for a new game.
+ * @param {Game} game
+ * @returns {Card[]}
+ */
 function getInitialCards(game) {
   return Array.from(
     { length: CORE.columns * CORE.rows },
@@ -561,27 +782,38 @@ function getInitialCards(game) {
   );
 }
 
-function getPreparedCards(game, $cards) {
+/**
+ * Re-rolls initial field until there are no immediate matches.
+ * @param {Game} game
+ * @param {Card[]} cards
+ * @returns {Card[]}
+ */
+function getPreparedCards(game, cards) {
   while (true) {
-    const $matchedIndexes = getMatchedFromCards($cards).indexes;
-    if ($matchedIndexes.size === 0) return $cards;
-    const matchedCards = getMatchedCards(game, $cards, $matchedIndexes);
-    $cards = getFallenCards(game, matchedCards);
+    const matchedIndexes = getMatchedFromCards(cards).indexes;
+    if (matchedIndexes.size === 0) return cards;
+    const matchedCards = getMatchedCards(game, cards, matchedIndexes);
+    cards = getFallenCards(game, matchedCards);
   }
 }
 
-function doSeedLogic(game, $seed) {
-  if (!$seed) return;
-  game.getNextCardValue = createGetNextCardValue($seed);
-  game.cards.set(
+/**
+ * Seed logic: prepare deterministic generators and initialize cards and moves.
+ * @param {Game} game
+ * @param {number|null|undefined} seed
+ */
+function doSeedLogic(game, seed) {
+  if (seed == null) return;
+  game.getNextCardValue = createGetNextCardValue(seed);
+  game.cardsStore.set(
     getClusteredCards(game, getPreparedCards(game, getInitialCards(game))),
   );
-  let $moves = get(game.moves);
-  if (!$moves) return;
-  $moves = Array.isArray($moves) ? $moves : getArrayFromBase64($moves);
-  if ($moves.length > 0) {
+  let moves = game.movesStore.get();
+  if (!moves) return;
+  moves = Array.isArray(moves) ? moves : getArrayFromBase64(moves);
+  if (moves.length > 0) {
     game.moveCount = 0;
-    game.movesInitial = $moves;
+    game.movesInitial = moves;
     return;
   }
   game.movesInitial = null;
@@ -589,45 +821,76 @@ function doSeedLogic(game, $seed) {
 
 // CORE INITIALIZATION /////////////////////////////////////////////////////////
 
+/**
+ * Reads previous highs from records into the game for later comparison.
+ * @param {Game} game
+ */
 function updatePreviousHighs(game) {
-  const $records = get(game.records);
-  game[KEYS.highComboPrev] = $records[KEYS.highCombo][KEYS.value];
-  game[KEYS.highScorePrev] = $records[KEYS.highScore][KEYS.value];
+  const records = game.recordsStore.get();
+  game[KEYS.highComboPrev] = records[KEYS.highCombo][KEYS.value];
+  game[KEYS.highScorePrev] = records[KEYS.highScore][KEYS.value];
 }
 
+/**
+ * Sets up subscriptions and core state on the provided game object.
+ * @param {Game} game
+ * @param {any} [sounds]
+ * @returns {Game}
+ */
 export function initCore(game, sounds) {
   updatePreviousHighs(game);
   game.sounds = sounds || {};
   game.getNextCardValue = () => 0;
   game.moveCount = 0;
   game.movesInitial = null;
-  game.energy.subscribe(($energy) => doEnergyLogic(game, $energy));
-  game.phase.subscribe(($phase) => doPhaseLogic(game, $phase));
-  game.plusIndex.subscribe(($plusIndex) => doPlusIndexLogic(game, $plusIndex));
-  game.score.subscribe(($score) => doScoreLogic(game, $score));
-  game.seed.subscribe(($seed) => doSeedLogic(game, $seed));
+  game.energyStore.subscribe((energy) => {
+    doEnergyLogic(game, energy);
+  });
+  game.phaseStore.subscribe((phase) => {
+    doPhaseLogic(game, phase);
+  });
+  game.plusIndexStore.subscribe((plusIndex) => {
+    doPlusIndexLogic(game, plusIndex);
+  });
+  game.scoreStore.subscribe((score) => {
+    doScoreLogic(game, score);
+  });
+  game.seedStore.subscribe((seed) => {
+    doSeedLogic(game, seed);
+  });
   return game;
 }
 
 // GAME RESET //////////////////////////////////////////////////////////////////
 
+/**
+ * Soft-resets the game several times to shuffle the board visually.
+ * @param {Game} game
+ * @param {number} count
+ * @param {string} [playerName]
+ */
 function shuffleBoard(game, count, playerName) {
   if (count < 0) return (game.ready = true);
   setTimeout(() => {
-    game.log.set(INITIAL_VALUES.log);
-    game.plusIndex.set(INITIAL_VALUES.plusIndex);
-    game.matchedIndexes.set(INITIAL_VALUES.matchedIndexes);
-    game.moves.set(INITIAL_VALUES.moves);
-    game.score.set(INITIAL_VALUES.score);
-    game.energy.set(INITIAL_VALUES.energy);
-    game.phase.set(INITIAL_VALUES.phase);
-    game.timestamp.set(Date.now());
+    game.logStore.set(INITIAL_VALUES.log);
+    game.plusIndexStore.set(INITIAL_VALUES.plusIndex);
+    game.matchedIndexesStore.set(INITIAL_VALUES.matchedIndexes);
+    game.movesStore.set(INITIAL_VALUES.moves);
+    game.scoreStore.set(INITIAL_VALUES.score);
+    game.energyStore.set(INITIAL_VALUES.energy);
+    game.phaseStore.set(INITIAL_VALUES.phase);
+    game.timestampStore.set(Date.now());
     shuffleBoard(game, --count);
     if (!playerName) return;
-    game.options.update(($options) => ({ ...$options, playerName }));
+    game.optionsStore.update((options) => ({ ...options, playerName }));
   }, 64);
 }
 
+/**
+ * Public reset: updates highs, plays sound, and triggers board shuffling.
+ * @param {Game} game
+ * @param {string} [playerName]
+ */
 export function resetGame(game, playerName) {
   updatePreviousHighs(game);
   checkSound(game, game.sounds.playGenerate);

@@ -6,18 +6,28 @@
 
   import { OVERLAYS } from "./constants.js";
   import { getRandom } from "./core.js";
-  import { combos, log, options, overlay, seed } from "./stores.js";
+  import {
+    combosStore,
+    logStore,
+    optionsStore,
+    overlayStore,
+    seedStore,
+  } from "./stores.js";
 
-  let digifallElement = null;
-  let scoreComponent = null;
-  let boardComponent = null;
+  let digifallElement = $state(null);
+  let scoreComponent = $state(null);
+  let boardComponent = $state(null);
 
-  $: if (digifallElement) {
-    digifallElement.isFocused = () =>
-      digifallElement.classList.contains("focus");
-    digifallElement.focus = () => digifallElement.classList.add("focus");
-    digifallElement.blur = () => digifallElement.classList.remove("focus");
-  }
+  let screen = $derived($logStore.length > 0 || $combosStore.length > 0);
+
+  $effect(() => {
+    if (digifallElement) {
+      digifallElement.isFocused = () =>
+        digifallElement.classList.contains("focus");
+      digifallElement.focus = () => digifallElement.classList.add("focus");
+      digifallElement.blur = () => digifallElement.classList.remove("focus");
+    }
+  });
 
   export function moveUp() {
     digifallElement.isFocused()
@@ -97,25 +107,25 @@
         linear-gradient(90deg, transparent 50%, ${getColor()} 50%);
       background-size: ${a}rem, ${b}rem, ${c}rem, ${d}rem;`;
   }
-
-  $: screen = $log.length > 0 || $combos.length > 0;
 </script>
 
-<div class="game" class:blur={$overlay}>
-  <div class="seedground" style={getSeedgroundStyle($seed)}></div>
+<div class="game" class:blur={$overlayStore}>
+  <div class="seedground" style={getSeedgroundStyle($seedStore)}></div>
   <div class="content">
-    {#if $seed}
+    {#if $seedStore}
       <div class="section-1">
         <button
           class="digifall"
           class:screen
           title="[open menu]"
-          on:click={() => ($overlay = OVERLAYS.menu)}
+          onclick={() => ($overlayStore = OVERLAYS.menu)}
           bind:this={digifallElement}
         >
           <h1>
             digifall
-            {#if $options.rapid}<span class="rapid">rapid</span>{/if}
+            {#if $optionsStore.rapid}
+              <span class="rapid">rapid</span>
+            {/if}
           </h1>
           <Log />
         </button>

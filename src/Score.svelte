@@ -2,23 +2,40 @@
   import { blur as blurTransition } from "svelte/transition";
 
   import { KEYS, PHASES } from "./constants.js";
-  import { phase, records, score } from "./stores.js";
+  import { phaseStore, recordsStore, scoreStore } from "./stores.js";
 
-  export let newRecordHighCombo = false;
-  export let newRecordHighScore = false;
-  export let newRecord = false;
-  export let overlaid = false;
-
-  const types = {
+  const TYPES = {
     [KEYS.highCombo]: "hi-combo",
     [KEYS.highScore]: "hi-score",
     [KEYS.score]: "score",
   };
 
-  let type = KEYS.score;
-  let timeoutId;
-  let visible = false;
-  let focused = false;
+  let { newRecordHighCombo, newRecordHighScore, newRecord, overlaid } =
+    $props();
+
+  let type = $state(KEYS.score);
+  let timeoutId = $state(null);
+  let visible = $state(false);
+  let focused = $state(false);
+
+  let value = $derived(
+    type === KEYS.score ? $scoreStore.value : $recordsStore[type][KEYS.value],
+  );
+  let title = $derived(
+    "score: " +
+      value +
+      "\nhigh score: " +
+      $recordsStore[KEYS.highScore][KEYS.value] +
+      "\nhigh combo: " +
+      $recordsStore[KEYS.highCombo][KEYS.value],
+  );
+
+  $effect(() => {
+    if (newRecord) {
+      type = newRecordHighScore ? KEYS.highScore : KEYS.highCombo;
+      visible = true;
+    }
+  });
 
   export function isFocused() {
     return focused;
@@ -32,7 +49,8 @@
     focused = false;
   }
 
-  export function nextType() {
+  export function nextType(event) {
+    event.preventDefault();
     type = getNextType(type);
     animateNewType();
   }
@@ -70,23 +88,10 @@
       visible = newRecord;
     }, 3200);
   }
-
-  $: if (newRecord) {
-    type = newRecordHighScore ? KEYS.highScore : KEYS.highCombo;
-    visible = true;
-  }
-  $: value = type === KEYS.score ? $score.value : $records[type][KEYS.value];
-  $: title =
-    "score: " +
-    value +
-    "\nhigh score: " +
-    $records[KEYS.highScore][KEYS.value] +
-    "\nhigh combo: " +
-    $records[KEYS.highCombo][KEYS.value];
 </script>
 
 {#key type}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <span
     class="score"
     class:focus={focused}
@@ -94,10 +99,10 @@
     tabindex="0"
     role="button"
     in:blurTransition
-    on:click|preventDefault={nextType}
+    onclick={nextType}
   >
-    <span class="type" class:visible>{types[type]}:</span>
-    {#if overlaid || $phase !== PHASES.gameOver}
+    <span class="type" class:visible>{TYPES[type]}:</span>
+    {#if overlaid || $phaseStore !== PHASES.gameOver}
       <span class="value">{value}</span>
     {/if}
   </span>

@@ -1,14 +1,9 @@
 <script>
   import { getNextCardValue } from "./core.js";
 
-  export let card;
-  export let index;
-  export let blink;
-  export let focus;
-  export let longpress;
-  export let plus;
+  let { card, index, blink, focus, longpress, plus } = $props();
 
-  $: nextValue = getNextCardValue(card.value);
+  let nextValue = $derived(getNextCardValue(card.value));
 </script>
 
 <div

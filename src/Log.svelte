@@ -2,7 +2,13 @@
   import { fade, slide } from "svelte/transition";
 
   import { PHASES } from "./constants.js";
-  import { checkRapid, combos, log, phase, score } from "./stores.js";
+  import {
+    checkRapid,
+    combosStore,
+    logStore,
+    phaseStore,
+    scoreStore,
+  } from "./stores.js";
 
   function getCountsStyle(digits = []) {
     let { length } = digits;
@@ -20,8 +26,8 @@
 </script>
 
 <ol class="log">
-  {#if $phase !== PHASES.score}
-    {#each $log as { digits, counts, extra, sum, ...row }, logIndex}
+  {#if $phaseStore !== PHASES.score}
+    {#each $logStore as { digits, counts, extra, sum, ...row }, logIndex}
       {@const rowKeys = Object.keys(row)}
       <li
         class="row"
@@ -51,24 +57,26 @@
       </li>
     {/each}
   {/if}
-  {#if $phase === PHASES.combo || $phase === PHASES.score}
-    {@const collapse = $log.length === 1}
+  {#if $phaseStore === PHASES.combo || $phaseStore === PHASES.score}
+    {@const collapse = $logStore.length === 1}
     <li
       class:collapse
       in:slide={checkRapid({ duration: collapse ? 0 : 100 })}
       out:fade={checkRapid({ duration: 200 })}
     >
-      {#if $phase === PHASES.combo}
+      {#if $phaseStore === PHASES.combo}
         <span out:fade={checkRapid({ duration: 200 })}>
           {collapse ? "" : "combo:"}
         </span>
       {/if}
       <span class="sum">
-        {$phase === PHASES.score && $score.buffer > 0 ? "+" : ""}{$score.buffer}
+        {$phaseStore === PHASES.score && $scoreStore.buffer > 0
+          ? "+"
+          : ""}{$scoreStore.buffer}
       </span>
     </li>
   {/if}
-  {#each $combos as { combo, key } (key)}
+  {#each $combosStore as { combo, key } (key)}
     <span class="combo">+{combo}</span>
   {/each}
 </ol>

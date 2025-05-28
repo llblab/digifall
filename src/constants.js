@@ -1,10 +1,14 @@
+import { DEFAULT_RELAYS } from "@digifall/leaderboard";
+
 export const DEBUG = Boolean(localStorage.getItem("debug"));
 
 export const RELOAD_IN_SEC = Number(localStorage.getItem("reload"));
 
-export const ALLOW_ALL_RELAYS = Boolean(localStorage.getItem("aar"));
+export const USE_ALL_RELAYS = Boolean(localStorage.getItem("use-all-relays"));
 
-export const MAX_RECORDS = 1000;
+export const MAX_RECORDS = 1e3;
+
+export const MAX_MOVES_LENGTH = 4e4;
 
 export const CORE = Object.freeze({
   columns: 6,
@@ -25,6 +29,7 @@ export const KEYS = Object.freeze({
   peerId: "peerId",
   playerName: "playerName",
   records: "records",
+  relays: "relays",
   score: "score",
   timestamp: "timestamp",
   type: "type",
@@ -36,6 +41,7 @@ export const OVERLAYS = Object.freeze({
   leaderboard: "leaderboard",
   menu: "menu",
   options: "options",
+  relays: "relays",
   wellcome: "wellcome",
 });
 
@@ -74,9 +80,13 @@ export const INITIAL_VALUES = Object.freeze({
     rapid: false,
     sound: true,
   },
+  [KEYS.relays]: {
+    active: [...DEFAULT_RELAYS],
+    applied: [...DEFAULT_RELAYS],
+  },
   overlay: OVERLAYS.menu,
   phase: PHASES.initial,
-  plusIndex: undefined,
+  plusIndex: null,
   [KEYS.records]: RECORD_TYPES.reduce((result, type) => {
     result[type] = {
       [KEYS.playerName]: "",

@@ -1,33 +1,58 @@
 <script>
+  import { untrack } from "svelte";
+
   import Card from "./Card.svelte";
 
-  import { longpress } from "./actions.js";
   import { CORE, PHASES } from "./constants.js";
-  import { getFieldFromCards } from "./core";
+  import { getFieldFromCards } from "./core.js";
   import {
     playHit,
     playPlus,
     playSlideIn,
     playSlideMove,
     playSlideOut,
-  } from "./sounds";
+  } from "./sounds.js";
   import game, {
-    cards,
+    cardsStore,
     checkSound,
-    log,
-    matchedIndexes,
-    options,
-    phase,
-    plusIndex,
-    seed,
+    logStore,
+    matchedIndexesStore,
+    optionsStore,
+    phaseStore,
+    plusIndexStore,
+    seedStore,
   } from "./stores.js";
 
-  let focusedCard = null;
-  let focusedCardPrev = null;
-  let longpressedIndex = undefined;
   let boardElement = null;
   let sliderHorizontalElement = null;
   let sliderVerticalElement = null;
+
+  let focusedCard = $state(null);
+  let focusedCardPrev = null;
+  let focusMemoized = $state(null);
+  let longpressedIndex = $state(null);
+
+  let rapid = $derived($optionsStore.rapid);
+  let idle = $derived($phaseStore === PHASES.idle);
+  let blink = $derived($matchedIndexesStore.size > 0 && $logStore.length === 1);
+  let overflow = $derived(!idle && !blink);
+  let progress = $derived(!idle || $plusIndexStore !== null);
+  let plusCard = $derived($cardsStore[$plusIndexStore]);
+  let sliderFocused = $derived(Boolean(plusCard || focusedCard || blink));
+  let field = $derived(getFieldFromCards($cardsStore));
+
+  $effect(() => {
+    const newValue = plusCard || focusedCard;
+    if (newValue) focusMemoized = newValue;
+  });
+
+  $effect(() => {
+    if ($matchedIndexesStore.size > 0) blur({ muteSound: true });
+  });
+
+  $effect(() => {
+    if ($seedStore) untrack(() => blur({ muteSound: true }));
+  });
 
   export function isFocused() {
     return Boolean(focusedCard);
@@ -85,11 +110,11 @@
   export function plusFocusedCard() {
     if (!isFocused()) return;
     focusedCardPrev = null;
-    const index = $cards.findIndex(
+    const index = $cardsStore.findIndex(
       ({ x, y }) => x === focusedCard.x && y === focusedCard.y,
     );
     if (index === -1) return;
-    $plusIndex = index;
+    $plusIndexStore = index;
     if (progress) return;
     checkSound(playPlus, { muteRapid: true });
   }
@@ -97,7 +122,7 @@
   export function focusCard(newValue) {
     if (!isFocused()) checkSound(playSlideIn);
     const index = field[newValue.x][newValue.y];
-    checkSound(() => playSlideMove($cards[index].value));
+    checkSound(() => playSlideMove($cardsStore[index].value));
     return (focusedCard = newValue);
   }
 
@@ -119,19 +144,25 @@
 
   function hoverCard(index) {
     if (progress) return;
-    if (longpressedIndex !== undefined) return;
+    if (longpressedIndex !== null) return;
     if (!isFocused()) checkSound(playSlideIn);
-    const currentCard = $cards[index];
-    if (currentCard !== focusedCard) {
-      highlightGhost();
-      checkSound(() => playSlideMove(currentCard.value));
-      focusedCardPrev = focusedCard;
-      focusedCard = currentCard;
+    const currentCard = $cardsStore[index];
+    if (!currentCard) return;
+    if (
+      focusedCard &&
+      focusedCard.x === currentCard.x &&
+      focusedCard.y === currentCard.y
+    ) {
+      return;
     }
+    highlightGhost();
+    checkSound(() => playSlideMove(currentCard.value));
+    focusedCardPrev = focusedCard;
+    focusedCard = currentCard;
   }
 
   function findNearestCard(element) {
-    if (element === boardElement) return undefined;
+    if (element === boardElement) return null;
     if (element.classList.contains("card")) return element;
     const cardChild = element.querySelector(".card");
     if (cardChild) return cardChild;
@@ -140,32 +171,36 @@
       if (parent.classList.contains("card")) return parent;
       parent = parent.parentElement;
     }
-    return undefined;
+    return null;
   }
 
   function findCardIndex(boardEvent) {
     const cardElement = findNearestCard(boardEvent.target);
-    return cardElement && Number(cardElement.dataset.index);
+    if (!cardElement || !cardElement.dataset.index) return null;
+    const index = Number(cardElement.dataset.index);
+    return isNaN(index) ? null : index;
   }
 
   function mouseMove(event) {
     if (!game.ready) return;
     const index = findCardIndex(event);
-    if (index > -1) hoverCard(index);
+    if (index !== null && index >= 0) hoverCard(index);
   }
 
-  function mouseLeave(event) {
-    blur({ muteSound: $phase !== PHASES.idle });
+  function mouseLeave(_event) {
+    blur({ muteSound: $phaseStore !== PHASES.idle });
   }
 
   function longpressStart(event) {
     if (progress) return;
     const index = findCardIndex(event.detail);
-    if (index === undefined) return;
+    if (index === null) return;
     hoverCard(index);
     if (!rapid) longpressedIndex = index;
     if (event.detail.type !== "mousedown") return;
-    checkSound(() => playHit($cards[index].value), { onlyOnIdle: true });
+    checkSound(() => playHit($cardsStore[index].value), {
+      onlyOnIdle: true,
+    });
     if (rapid) plusFocusedCard();
   }
 
@@ -173,34 +208,54 @@
     if (rapid) return;
     const index = findCardIndex(event.detail);
     if (index !== longpressedIndex) return;
-    longpressedIndex = undefined;
+    longpressedIndex = null;
     plusFocusedCard();
     blur();
   }
 
-  function longpressEnd(event) {
-    if (!rapid) longpressedIndex = undefined;
+  function longpressEnd(_event) {
+    if (!rapid) longpressedIndex = null;
   }
 
   function dblclick(event) {
     event.preventDefault();
   }
 
-  seed.subscribe(() => blur({ muteSound: true }));
-
-  $: if ($matchedIndexes.size > 0) blur({ muteSound: true });
-  $: ({ rapid } = $options);
-  $: idle = $phase === PHASES.idle;
-  $: blink = $matchedIndexes.size > 0 && $log.length === 1;
-  $: overflow = !idle && !blink;
-  $: progress = !idle || $plusIndex !== undefined;
-  $: plusCard = $cards[$plusIndex];
-  $: focusMemoized = plusCard || focusedCard || focusMemoized;
-  $: sliderFocus = plusCard || focusedCard || blink;
-  $: field = getFieldFromCards($cards);
+  export function longpress(node, { duration = 400 } = {}) {
+    let timer;
+    $effect(() => {
+      const start = (event = {}) => {
+        node.dispatchEvent(
+          new CustomEvent("longpressstart", { bubbles: true, detail: event }),
+        );
+        timer = window.setTimeout(() => {
+          node.dispatchEvent(
+            new CustomEvent("longpressfire", { bubbles: true, detail: event }),
+          );
+        }, duration);
+      };
+      const stop = (event = {}) => {
+        clearTimeout(timer);
+        node.dispatchEvent(
+          new CustomEvent("longpressend", { bubbles: true, detail: event }),
+        );
+      };
+      node.addEventListener("mousedown", start, { passive: true });
+      node.addEventListener("touchstart", start, { passive: true });
+      node.addEventListener("touchend", stop, { passive: true });
+      window.addEventListener("mouseup", stop, { passive: true });
+      return () => {
+        clearTimeout(timer);
+        node.removeEventListener("mousedown", start);
+        node.removeEventListener("touchstart", start);
+        node.removeEventListener("touchend", stop);
+        window.removeEventListener("mouseup", stop);
+      };
+    });
+  }
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="board"
   class:overflow
@@ -209,16 +264,16 @@
   style:--focus-y={focusMemoized && focusMemoized.y}
   tabindex="0"
   role="button"
-  on:mousemove={mouseMove}
-  on:mouseleave={mouseLeave}
-  on:longpressstart={longpressStart}
-  on:longpressfire={longpressFire}
-  on:longpressend={longpressEnd}
-  on:dblclick={dblclick}
-  use:longpress
+  onmousemove={mouseMove}
+  onmouseleave={mouseLeave}
+  onlongpressstart={longpressStart}
+  onlongpressfire={longpressFire}
+  onlongpressend={longpressEnd}
+  ondblclick={dblclick}
   bind:this={boardElement}
+  use:longpress
 >
-  {#each $cards as card, index (index)}
+  {#each $cardsStore as card, index (index)}
     {@const focus =
       card.x === (focusedCard && focusedCard.x) &&
       card.y === (focusedCard && focusedCard.y)}
@@ -226,21 +281,21 @@
       {card}
       {index}
       {focus}
-      blink={$matchedIndexes.has(index)}
-      longpress={longpressedIndex === index}
-      plus={$plusIndex === index}
+      blink={$matchedIndexesStore.has(index)}
+      longpress={index === longpressedIndex}
+      plus={index === $plusIndexStore}
     />
   {/each}
   <div
     class="slider horizontal"
     class:blink
-    class:focus={sliderFocus}
+    class:focus={sliderFocused}
     bind:this={sliderHorizontalElement}
   ></div>
   <div
     class="slider vertical"
     class:blink
-    class:focus={sliderFocus}
+    class:focus={sliderFocused}
     bind:this={sliderVerticalElement}
   ></div>
 </div>

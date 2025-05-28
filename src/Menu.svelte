@@ -1,23 +1,27 @@
-<script>
-  import { onMount } from "svelte";
+<script lang="js">
   import { blur } from "svelte/transition";
 
   import Dialog from "./Dialog.svelte";
 
   import { version } from "../package.json";
   import { KEYS, OVERLAYS, PHASES } from "./constants.js";
-  import { options, overlay, phase, resetGame } from "./stores.js";
+  import {
+    optionsStore,
+    overlayStore,
+    phaseStore,
+    resetGame,
+  } from "./stores.js";
 
-  let dialogComponent = null;
-  let newGameDialogOpened = false;
+  let dialogComponent = $state(null);
+  let dialogVisible = $state(false);
 
-  onMount(() => {
-    if ($options.playerName !== "") return;
-    $overlay = OVERLAYS.wellcome;
+  $effect(() => {
+    if ($optionsStore.playerName !== "") return;
+    $overlayStore = OVERLAYS.wellcome;
   });
 
   export function isNewGameDialog() {
-    return dialogComponent.isOpened();
+    return dialogComponent.visible;
   }
 
   export function closeNewGameDialog() {
@@ -25,7 +29,7 @@
   }
 
   function resume() {
-    $overlay = null;
+    $overlayStore = null;
   }
 
   function startNewGame() {
@@ -34,42 +38,42 @@
   }
 
   function showLeaderboard() {
-    $overlay = OVERLAYS.leaderboard;
+    $overlayStore = OVERLAYS.leaderboard;
   }
 
   function showOptions() {
-    $overlay = OVERLAYS.options;
+    $overlayStore = OVERLAYS.options;
   }
 </script>
 
-{#if !newGameDialogOpened}
+{#if !dialogVisible}
   <div class="menu content" in:blur|global>
     <div class="section-1">
       <h1>
         digifall
-        {#if $options.rapid}<span class="rapid">rapid</span>{/if}
+        {#if $optionsStore.rapid}<span class="rapid">rapid</span>{/if}
       </h1>
     </div>
     <div class="section-2"></div>
     <div class="section-3">
       <div class="col">
-        {#if $phase === PHASES.gameOver}
-          <button on:click={startNewGame}>new game</button>
+        {#if $phaseStore === PHASES.gameOver}
+          <button onclick={startNewGame}>new game</button>
         {:else}
-          <button on:click={resume}>resume</button>
-          <button on:click={dialogComponent.show}>new game</button>
+          <button onclick={resume}>resume</button>
+          <button onclick={dialogComponent?.open}>new game</button>
         {/if}
-        {#if $options[KEYS.leaderboard]}
-          <button on:click={showLeaderboard}>p2p leaderboard</button>
+        {#if $optionsStore[KEYS.leaderboard]}
+          <button onclick={showLeaderboard}>p2p leaderboard</button>
         {/if}
-        <button on:click={showOptions}>options</button>
+        <button onclick={showOptions}>options</button>
       </div>
     </div>
     <div class="section-4"></div>
   </div>
   <span class="version" in:blur|global>{version}</span>
   <a
-    href="https://github.com/shlavik/digifall"
+    href="https://github.com/llblab/digifall"
     class="github-corner"
     aria-label="View source on GitHub"
     in:blur|global
@@ -90,12 +94,12 @@
   </a>
 {/if}
 
-<Dialog bind:this={dialogComponent} bind:opened={newGameDialogOpened}>
+<Dialog bind:this={dialogComponent} bind:visible={dialogVisible}>
   <div class="col">
     <p>start a new game?</p>
     <div class="row">
-      <button on:click={startNewGame}>yes</button>
-      <button on:click={dialogComponent.close}>no</button>
+      <button onclick={startNewGame}>yes</button>
+      <button onclick={dialogComponent.close}>no</button>
     </div>
   </div>
 </Dialog>

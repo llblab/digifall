@@ -1,28 +1,18 @@
 <script>
-  import { createEventDispatcher } from "svelte";
   import { blur, fly } from "svelte/transition";
 
-  const dispatch = createEventDispatcher();
+  let { title = "", visible = $bindable(false), children } = $props();
 
-  export let title = "";
-  export let opened = false;
-
-  export function isOpened() {
-    return opened;
+  export function open() {
+    visible = true;
   }
 
   export function close() {
-    opened = false;
-    dispatch("close");
-  }
-
-  export function show() {
-    opened = true;
-    dispatch("show");
+    visible = false;
   }
 </script>
 
-{#if opened}
+{#if visible}
   <div class="dialog content" in:blur>
     <div class="section-1">
       {#if title}
@@ -33,7 +23,7 @@
     </div>
     <div class="section-2"></div>
     <div class="section-3" in:fly={{ y: 24 }}>
-      <slot />
+      {@render children({ visible, open, close })}
     </div>
     <div class="section-4"></div>
   </div>

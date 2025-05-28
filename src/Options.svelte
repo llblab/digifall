@@ -5,58 +5,90 @@
   import PlayerName from "./PlayerName.svelte";
 
   import { INITIAL_VALUES, OVERLAYS } from "./constants.js";
-  import { options, overlay, records, resetGame } from "./stores.js";
+  import {
+    optionsStore,
+    overlayStore,
+    recordsStore,
+    resetGame,
+  } from "./stores.js";
 
-  let dialogComponent = null;
-  let dialogOpened = false;
+  let dialogComponent = $state(null);
+  let dialogVisible = $state(false);
 
-  let playerNameComponent = null;
-  let playerName = $options.playerName;
+  let playerNameComponent = $state(null);
+  let playerName = $derived($optionsStore.playerName);
 
-  export function isDialogOpened() {
-    return dialogOpened;
+  export function isDialogVisible() {
+    return dialogVisible;
   }
 
   function accept() {
     dialogComponent.close();
-    $records = INITIAL_VALUES.records;
+    $recordsStore = INITIAL_VALUES.records;
     resetGame(playerName);
   }
 
   function reject() {
     dialogComponent.close();
-    playerName = $options.playerName;
+    playerName = $optionsStore.playerName;
   }
 
-  function submit() {
-    if (playerName === "") return playerNameComponent.blink();
-    if (playerName === $options.playerName) return ($overlay = OVERLAYS.menu);
-    dialogComponent.show();
+  function goToMenu() {
+    if (playerName === "") {
+      return playerNameComponent.blink();
+    }
+    if (playerName !== $optionsStore.playerName) {
+      return dialogComponent.open();
+    }
+    $overlayStore = OVERLAYS.menu;
+  }
+
+  function openRelays() {
+    $overlayStore = OVERLAYS.relays;
   }
 </script>
 
-{#if !dialogOpened}
-  <form
-    class="options content"
-    in:blur|global
-    on:submit|preventDefault={submit}
-  >
+{#if !dialogVisible}
+  <div class="options content" in:blur|global>
     <div class="section-1">
       <span in:fly|global={{ y: -48 }}>options</span>
     </div>
     <div class="section-2"></div>
     <div class="section-3" in:fly|global={{ y: 24 }}>
       <div class="col">
-        <PlayerName bind:this={playerNameComponent} bind:playerName />
+        <PlayerName bind:this={playerNameComponent} bind:value={playerName} />
+        <input type="checkbox" id="rapid" bind:checked={$optionsStore.rapid} />
+        <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
+        <label
+          for="rapid"
+          title="boring animations {$optionsStore.rapid
+            ? 'disabled'
+            : 'enabled'}"
+          tabindex="0"
+          role="button">rapid mode</label
+        >
+        <input
+          type="checkbox"
+          id="sound"
+          checked={$optionsStore.sound}
+          onclick={() => ($optionsStore.sound = !$optionsStore.sound)}
+        />
+        <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
+        <label
+          for="sound"
+          title="making sounds {$optionsStore.sound ? 'enabled' : 'disabled'}"
+          tabindex="0"
+          role="button">sound effects</label
+        >
         <input
           type="checkbox"
           id="leaderboard"
-          bind:checked={$options.leaderboard}
+          bind:checked={$optionsStore.leaderboard}
         />
-        <!-- svelte-ignore a11y-no-noninteractive-element-to-interactive-role -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
         <label
           for="leaderboard"
-          title="sharing records {$options.leaderboard
+          title="sharing records {$optionsStore.leaderboard
             ? 'enabled'
             : 'disabled'}"
           tabindex="0"
@@ -64,50 +96,90 @@
         >
           p2p leaderboard
         </label>
-        <input type="checkbox" id="rapid" bind:checked={$options.rapid} />
-        <!-- svelte-ignore a11y-no-noninteractive-element-to-interactive-role -->
-        <label
-          for="rapid"
-          title="boring animations {$options.rapid ? 'disabled' : 'enabled'}"
-          tabindex="0"
-          role="button">rapid mode</label
+        <button
+          class="suboption"
+          disabled={!$optionsStore.leaderboard}
+          onclick={openRelays}
+          in:fly|global={{ x: 20 }}
         >
-        <input
-          type="checkbox"
-          id="sound"
-          checked={$options.sound}
-          on:click={() => ($options.sound = !$options.sound)}
-        />
-        <!-- svelte-ignore a11y-no-noninteractive-element-to-interactive-role -->
-        <label
-          for="sound"
-          title="making sounds {$options.sound ? 'enabled' : 'disabled'}"
-          tabindex="0"
-          role="button">sound effects</label
-        >
+          relays
+        </button>
       </div>
     </div>
     <div class="section-4">
       <div class="col">
-        <button type="submit" title="[open menu]" in:fly|global={{ y: 48 }}>
+        <button
+          onclick={goToMenu}
+          title="[open menu]"
+          in:fly|global={{ y: 48 }}
+        >
           menu
         </button>
       </div>
     </div>
-  </form>
+  </div>
 {/if}
 
 <Dialog
   title={playerName}
   bind:this={dialogComponent}
-  bind:opened={dialogOpened}
+  bind:visible={dialogVisible}
 >
   <div class="col exclam-fix">
     <p>new name detected!</p>
     <p>progress will be lost!</p>
     <div class="row">
-      <button on:click={accept}>accept</button>
-      <button on:click={reject}>reject</button>
+      <button onclick={accept}>accept</button>
+      <button onclick={reject}>reject</button>
     </div>
   </div>
 </Dialog>
+
+<style lang="postcss">
+  button.suboption {
+    max-width: fit-content;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    margin-left: 1rem;
+  }
+
+  input[type="checkbox"] {
+    display: none;
+    appearance: none;
+  }
+
+  input[type="checkbox"] + label {
+    cursor: pointer;
+    line-height: 6rem;
+    text-indent: 0;
+  }
+
+  input[type="checkbox"] + label::before,
+  input[type="checkbox"]:checked + label::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    content: "";
+  }
+
+  input[type="checkbox"] + label::before {
+    right: 4rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1rem solid currentcolor;
+  }
+
+  input[type="checkbox"]:checked + label::after {
+    right: 5.3rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: greenyellow;
+    box-shadow: var(--shadow-inset);
+  }
+
+  input[type="checkbox"]:disabled + label {
+    color: var(--color-0);
+    cursor: not-allowed;
+  }
+</style>

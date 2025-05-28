@@ -6,7 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   build: {
-    target: "es2020",
+    target: "esnext",
     chunkSizeWarningLimit: 1337,
   },
   optimizeDeps: {
@@ -17,14 +17,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    svelte({
-      compilerOptions: {
-        compatibility: {
-          componentApi: 4,
-        },
-        immutable: false,
-      },
-    }),
+    svelte(),
     VitePWA({
       registerType: "autoUpdate",
       manifest: false,

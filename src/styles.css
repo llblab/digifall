@@ -45,6 +45,11 @@
   background-color: white;
 }
 
+*::selection {
+  background-color: white;
+  color: black;
+}
+
 html,
 body,
 .app,
@@ -67,7 +72,7 @@ html {
   --color-8: #33aab6;
   --color-9: #1e5b54;
   --color-base: rgb(173 173 133);
-  --color-dark: hsl(60deg 20% 25%);
+  --color-dark: hsl(60deg 20% 27%);
   --color-body: hsl(60deg 20% 10%);
   --color-black-04: rgb(0 0 0 / 40%);
   --color-black-08: rgb(0 0 0 / 80%);
@@ -160,6 +165,14 @@ button:active {
   font-weight: normal;
 }
 
+button:disabled {
+  border-color: var(--color-dark) !important;
+  background-color: var(--color-dark) !important;
+  color: black !important;
+  cursor: not-allowed !important;
+  font-weight: bold !important;
+}
+
 button.focus,
 button:hover {
   background-color: var(--color-black-04);
@@ -169,7 +182,7 @@ button:hover {
 input[type="text"] {
   padding: 1.25rem 0 1.25rem 3rem;
   border: 0.75rem solid white;
-  background-color: transparent;
+  background-color: var(--color-black-04);
   box-shadow: var(--shadow-1), var(--shadow-inset);
   color: white;
   font-style: italic;
@@ -183,51 +196,6 @@ input[type="text"]::placeholder {
   overflow: visible;
   color: var(--color-dark);
   text-align: center;
-}
-
-input[type="text"]::selection {
-  background-color: white;
-  color: black;
-}
-
-input[type="checkbox"] {
-  display: none;
-  appearance: none;
-}
-
-input[type="checkbox"] + label {
-  cursor: pointer;
-  line-height: 6rem;
-  text-indent: 0;
-}
-
-input[type="checkbox"] + label::before,
-input[type="checkbox"]:checked + label::after {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  margin: auto;
-  content: "";
-}
-
-input[type="checkbox"] + label::before {
-  right: 4rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1rem solid currentcolor;
-}
-
-input[type="checkbox"]:checked + label::after {
-  right: 5.3rem;
-  width: 1.5rem;
-  height: 1.5rem;
-  background-color: greenyellow;
-  box-shadow: var(--shadow-inset);
-}
-
-input[type="checkbox"]:disabled + label {
-  color: var(--color-0);
-  cursor: not-allowed;
 }
 
 noscript {
@@ -314,7 +282,8 @@ p.exclam-fix {
 
 .section-3 .col,
 .section-4 .col,
-.section-3 .row {
+.section-3 .row,
+.section-4 .row {
   display: flex;
   width: 100%;
 }
@@ -325,12 +294,14 @@ p.exclam-fix {
   justify-content: center;
 }
 
-.section-3 .row {
+.section-3 .row,
+.section-4 .row {
   align-items: center;
   justify-content: space-between;
 }
 
-.section-3 .row button {
+.section-3 .row button,
+.section-4 .row button {
   flex: 1;
 }
 

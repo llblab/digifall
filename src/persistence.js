@@ -1,41 +1,62 @@
-import { createStore, get as idbGet, set as idbSet } from "idb-keyval";
 import { get, writable } from "svelte/store";
 
-export function localStorageStore(key, initialValue) {
-  const store = writable(initialValue);
-  const json = localStorage.getItem(key);
-  if (json) store.set(JSON.parse(json));
-  else localStorage.setItem(key, JSON.stringify(initialValue));
+export function createLocalStorageStore(
+  key,
+  initialValue,
+  load = (initialValue) => {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : initialValue;
+  },
+  save = (value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+) {
+  const store = writable(load(initialValue) || initialValue);
   return {
+    get() {
+      return get(store);
+    },
     set(value) {
-      localStorage.setItem(key, JSON.stringify(value));
+      save(value);
       store.set(value);
     },
     update(cb) {
-      this.set(cb(get(this)));
+      this.set(cb(this.get()));
     },
     subscribe: store.subscribe,
   };
 }
 
-export function createIndexedDBStore(dbName, storeName) {
-  const db = createStore(dbName, storeName);
-  return function indexedDBStore(key, initialValue) {
-    const store = writable(initialValue);
-    idbGet(key, db).then((value) => {
-      if (value === undefined && initialValue !== undefined) {
-        idbSet(key, initialValue, db);
-        return;
+import { IDBDatastore } from "datastore-idb";
+
+export async function createIndexedDBFactory(storeName) {
+  const datastore = new IDBDatastore(storeName);
+  await datastore.open().catch(() => {});
+  return async function createIndexedDBStore(
+    key,
+    initialValue,
+    load = async (initialValue) => {
+      const stored = await datastore.get(key).catch(() => initialValue);
+      if (stored === undefined && initialValue !== undefined) {
+        await datastore.put(key, initialValue);
+        return initialValue;
       }
-      if (value === initialValue) return;
-      store.set(value);
-    });
+      return stored;
+    },
+    save = async (value) => {
+      await datastore.put(key, value).catch(() => {});
+    },
+  ) {
+    const store = writable(await load(initialValue).catch(() => initialValue));
     return {
+      get() {
+        return get(store);
+      },
       set(value) {
-        idbSet(key, value, db).then(() => store.set(value));
+        save(value).then(() => store.set(value));
       },
       update(cb) {
-        idbGet(key, db).then((value) => this.set(cb(value)));
+        this.set(cb(this.get()));
       },
       subscribe: store.subscribe,
     };

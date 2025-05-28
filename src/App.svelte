@@ -2,60 +2,51 @@
   import Game from "./Game.svelte";
   import Overlay from "./Overlay.svelte";
 
-  import { RELOAD_IN_SEC, OVERLAYS, PHASES } from "./constants.js";
-  import { energy, overlay, phase, seed } from "./stores.js";
+  import { OVERLAYS, PHASES, RELOAD_IN_SEC } from "./constants.js";
+  import {
+    energyStore,
+    overlayStore,
+    phaseStore,
+    seedStore,
+  } from "./stores.js";
 
-  let gameComponent = null;
-  let overlayComponent = null;
+  let gameComponent = $state(null);
+  let overlayComponent = $state(null);
 
-  if (RELOAD_IN_SEC > 0) {
-    setTimeout(() => (location = location), RELOAD_IN_SEC * 1e3);
-  }
+  $effect(() => {
+    if (RELOAD_IN_SEC > 0) {
+      setTimeout(() => (location = location), RELOAD_IN_SEC * 1e3);
+    }
+  });
 
-  onstorage = function syncTabs() {
-    if (document.hasFocus()) return;
-    document.location = document.location;
-  };
+  $effect(() => {
+    if ($phaseStore !== PHASES.gameOver) return;
+    $overlayStore = OVERLAYS.gameOver;
+  });
 
-  function updateRem() {
-    const { style, offsetHeight, offsetWidth } = document.documentElement;
-    const ratio = offsetHeight / offsetWidth;
-    const landscape = ratio < 1.5;
-    const size = landscape ? offsetHeight / 192 : offsetWidth / 128;
-    const diff = size % 0.25;
-    style.setProperty("font-size", size - diff + "px");
-  }
+  $effect(() => {
+    document.documentElement.classList[
+      $energyStore.value > 100 ||
+      $phaseStore === PHASES.extra ||
+      $phaseStore === PHASES.combo ||
+      $overlayStore === OVERLAYS.leaderboard ||
+      $overlayStore === OVERLAYS.gameOver
+        ? "add"
+        : "remove"
+    ]("random-color");
+  });
 
-  updateRem();
-  onresize = updateRem;
-  document.addEventListener("visibilitychange", updateRem);
-
-  function manageRandomColorClass(value) {
-    document.documentElement.classList[value ? "add" : "remove"](
-      "random-color",
-    );
-  }
-
-  $: if ($phase === PHASES.gameOver) $overlay = OVERLAYS.gameOver;
-  $: manageRandomColorClass(
-    $energy.value > 100 ||
-      $phase === PHASES.extra ||
-      $phase === PHASES.combo ||
-      $overlay === OVERLAYS.leaderboard ||
-      $overlay === OVERLAYS.gameOver,
-  );
-
-  function keydown(event) {
-    const component = $overlay === null ? gameComponent : overlayComponent;
+  function onkeydown(event) {
+    const component = $overlayStore === null ? gameComponent : overlayComponent;
     switch (event.code) {
       case "Escape":
         event.preventDefault();
         return component.blur();
       case "Tab":
         event.preventDefault();
-        if (!$seed) return;
-        if ($overlay === OVERLAYS.wellcome) return;
-        if ($overlay === OVERLAYS.gameOver) return;
+        if (!$seedStore) return;
+        if ($overlayStore === OVERLAYS.wellcome) return;
+        if ($overlayStore === OVERLAYS.gameOver) return;
         return overlayComponent.switchOverlay();
       case "ArrowUp":
         return component.moveUp();
@@ -67,14 +58,36 @@
         return component.moveRight();
       case "Enter":
       case "Space":
+        event.preventDefault();
+        return component.perfomAction();
       case "KeyF":
       case "KeyJ":
         return component.perfomAction();
     }
   }
+
+  function syncTabs() {
+    if (document.hasFocus()) return;
+    document.location = document.location;
+  }
+
+  function updateRem() {
+    const { style, offsetHeight, offsetWidth } = document.documentElement;
+    const ratio = offsetHeight / offsetWidth;
+    const landscape = ratio < 1.5;
+    const size = landscape ? offsetHeight / 192 : offsetWidth / 128;
+    const diff = size % 0.25;
+    style.setProperty("font-size", size - diff + "px");
+  }
 </script>
 
-<svelte:window on:keydown={keydown} />
+<svelte:window
+  {onkeydown}
+  onstorage={syncTabs}
+  onresize={updateRem}
+  onvisibilitychange={updateRem}
+  use:updateRem
+/>
 
 <div class="app">
   <Game bind:this={gameComponent} />

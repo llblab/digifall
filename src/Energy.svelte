@@ -1,36 +1,43 @@
 <script>
   import { PHASES } from "./constants.js";
   import { playLowEnergy } from "./sounds.js";
-  import { checkSound, energy, phase } from "./stores.js";
+  import { checkSound, energyStore, phaseStore } from "./stores.js";
 
-  export let gameOver = false;
+  let { gameOver = false } = $props();
 
-  let zeroFlipped = false;
+  let zeroFlipped = $state(false);
 
-  $: ({ value } = $energy);
-  $: extra = value > 100;
-  $: warning = value < 20 && $phase === PHASES.idle;
-  $: if (warning) checkSound(playLowEnergy);
-  $: leftBarStyle = `
+  let value = $derived($energyStore.value);
+  let extra = $derived(value > 100);
+  let warning = $derived(value < 20 && $phaseStore === PHASES.idle);
+
+  let leftBarStyle = $derived(`
     z-index: ${extra ? 0 : 1};
     flex: ${(extra ? 200 - value : value) / 100};
-  `;
-  $: leftValueStyle = `
+  `);
+  let leftValueStyle = $derived(`
     position: ${extra ? "absolute" : "relative"};
-  `;
-  $: rightBarStyle = `
+  `);
+  let rightBarStyle = $derived(`
     z-index: ${extra ? 1 : 0};
     flex: ${extra ? (value - 100) / 100 : 0};
-  `;
-  $: rightValueStyle = `
+  `);
+  let rightValueStyle = $derived(`
     position: ${extra ? "relative" : "absolute"};
     left: ${
       extra ? `calc(${value > 119 ? 0 : (value - 120) / 100} * 128rem)` : 0
     };
-  `;
-  $: if (gameOver && !zeroFlipped) {
-    setTimeout(() => (zeroFlipped = true));
-  }
+  `);
+
+  $effect(() => {
+    if (warning) checkSound(playLowEnergy);
+  });
+
+  $effect(() => {
+    if (gameOver && !zeroFlipped) {
+      setTimeout(() => (zeroFlipped = true));
+    }
+  });
 </script>
 
 <div class="energy">

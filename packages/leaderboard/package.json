@@ -1,0 +1,17 @@
+{
+  "name": "@digifall/leaderboard",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "dependencies": {
+    "@llblab/uniqueue": "1.2.1",
+    "uint8arrays": "5.1.0"
+  }
+}
