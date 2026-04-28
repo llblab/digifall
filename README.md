@@ -1,5 +1,3 @@
-`work in progress`
-
 # [DIGIFALL](https://digifall.app)
 
 [<img alt="Get it on Google Play" src="public/images/get-it-on-google-play.png" />](https://play.google.com/store/apps/details?id=com.llblab.digifall "Get it on Google Play")
@@ -23,7 +21,7 @@ A deterministic survival puzzle game begins with a reserve of 100 energy points.
 - A server running Linux (Debian/Ubuntu or RHEL/CentOS/Fedora)
 - Root access to the server
 - A domain name pointing to your server (for SSL certificate)
-- Node.js v20+
+- Node.js v22+ with npm
 
 ## Relay Node
 

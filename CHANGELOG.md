@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.14.0 Bumd Deps + New Default Relay
+
+### Leaderboard Protocol
+
+- `@llblab/uniqueue API Compatibility`: `LeaderboardCore` now reads queue snapshots through a compatibility helper, supporting current `snapshot()` and older iterable/data-based Uniqueue instances
+- `@llblab/uniqueue 1.4`: Adapted `LeaderboardCore` to documented `snapshot()` and `get()` APIs instead of private `.data` / `.indexes` internals
+- `Headless Node Startup`: Fixed persisted leaderboard loading after dependency upgrades
+- `Record Insertion`: Preserved top-N behavior by treating self-evicted low-priority records as no-op updates
+
+### Relay Deployment
+
+- `CI Node Baseline`: GitHub Pages deploy now uses Node.js 22; `package.json` and lockfile declare `node >=22`; lockfile includes npm 10-compatible optional peer entries
+- `Stylelint Peer Resolution`: Overrode `stylelint-order` to a Stylelint 17-compatible version and narrowed lint globs to source/html inputs so generated `dist/` assets are not linted
+- `Self-Contained Relay Scripts`: Inlined the needed shell helpers into both relay lifecycle scripts so one-file `curl` installs do not depend on local or remote helper scripts
+- `Node Runtime Check`: Relay deployment now verifies both Node.js 22+ and npm, installing NodeSource Node.js when a distro provides node without npm
+- `RPM Package Managers`: Fedora/RHEL/CentOS deployment now supports both `dnf` and `yum`, with optional EPEL, certbot-nginx, and SELinux utility fallbacks
+- `Systemd Runtime Path`: Relay service now uses the resolved absolute npm binary instead of relying on `which npm` during unit generation
+- `Privilege Drop`: Temporary relay smoke test now uses `runuser` before falling back to `sudo`
+- `Relay Undeploy`: Refactored removal into safer idempotent steps with explicit confirmation, safe app-directory deletion guard, nginx reload validation, and shared helpers
+
 ## 0.13.0 Svelte 5 + Dynamic Relays
 
 ### P2P Infrastructure
@@ -38,11 +58,3 @@
 - `AGENTS.md`: Added comprehensive project context documentation for AI-assisted development
 - `Type Annotations`: Added JSDoc typedefs for core entities (Card, GameRecord, ComboRow, LogEntry)
 - `New Scripts`: `npm run check` (svelte-check), `npm run format` (prettier), `npm run relay`, `npm run leaderboard`
-
-### Dependencies
-
-- Svelte 5.22 → 5.46
-- Vite 6.3 → 7.3
-- libp2p 2.8 → 3.1
-- Removed: idb-keyval, it-pipe, @chainsafe/libp2p-gossipsub
-- Added: @libp2p/floodsub, datastore-fs, prettier, svelte-check

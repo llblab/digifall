@@ -76,7 +76,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Plaintext Encryption: libp2p configured without encryption layer
   - Rationale: Validation layer makes encryption redundant—MITM cannot inject invalid records, only waste bandwidth. Defense-by-validation eliminates need for defense-by-encryption.
   - Trade-offs: No privacy (acceptable for public leaderboard), visible traffic (irrelevant since validation is sole trust boundary)
-  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay.js)
+  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay/index.js)
 
 - Svelte 5 Runes: Modern reactive primitives ($state, $derived, $effect)
   - Rationale: Simplified reactivity compared to stores-only approach
@@ -162,6 +162,11 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: Enables staging/prod separation, custom relay testing without code changes
   - See: [parseRelaysFromEnv()](nodes/leaderboard/index.js#L28-L35)
 
+- Deployment Runtime Validation: Relay deployment must validate both Node.js and npm before installing app dependencies
+  - Rationale: Distros can provide a usable `node` binary without `npm`; systemd units should use resolved absolute runtime paths
+  - Pattern: Keep curl-installed lifecycle scripts self-contained; duplicate shell helpers intentionally when single-file bootstrap reliability matters more than DRY
+  - See: [ensure_node_runtime()](scripts/deploy-relay.sh)
+
 - Git-Tracked Bootstrap Data: Leaderboard `data.json` committed to repo for disaster recovery and new node bootstrap
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution
   - Trade-off: Manual commits required to update backup (acceptable for low-frequency changes)
@@ -227,6 +232,9 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: Client persists to IndexedDB, server to JSON file—same core, different storage
   - Pattern: Dependency injection via constructor options
 
+- Public Dependency Surfaces: Shared protocol packages must consume dependency APIs through documented methods and compatibility shims before falling back to historical internals
+  - Rationale: Deployed nodes can run stale dependency builds; `getQueueSnapshot()` supports current `snapshot()` and older iterable/data-based `@llblab/uniqueue` instances
+
 ## 6. Pre-Task Preparation Protocol
 
 - Step 1: Review affected entity definitions in section 2 (Core Entities)
@@ -256,23 +264,30 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 _Format: Task → Implementation → Impact → Insights_
 
-[Current]: v0.13.0 — Svelte 5 + Dynamic Relays + Shared Leaderboard Package
+[Current]: v0.14.3 — Node 22 CI Baseline
 
-- Task: Svelte 5 migration, user-configurable relays, `@digifall/leaderboard` extraction, node restructuring
-- Implementation: Runes migration; `relaysStore` with `{ active, applied }` atomic structure; libp2p v3 + floodsub; `LeaderboardCore` class; `nodes/relay/` and `nodes/leaderboard/` structure; git-tracked `data.json`; env var relay config
-- Impact: Modern reactivity; relay management without code changes; ~180 LOC deduplication; server nodes bootstrap from committed data
-- Insights: Applied-Set Pattern (bidirectional migrations); Protocol vs Infrastructure separation; Handler Factories (IoC without DI); Git as Backup; Colocated Node Structure
+- Task: Fix `npm ci` failure on GitHub runner using Node 20 and stale lock metadata
+- Implementation: Set deploy workflow to Node 22; declared `node >=22` in package metadata; refreshed lockfile with npm 10-compatible optional peer entries; overrode `stylelint-order` to a Stylelint 17-compatible version; narrowed lint globs away from generated `dist/`
+- Impact: CI installs with the same Node baseline as runtime dependencies; peer warning is removed; lint remains source-scoped after builds
+- Insights: CI Runtime Must Match Dependency Engines; Generated Artifacts Are Not Lint Inputs
 
-[Previous]: Relay Infrastructure Consolidation
+[Previous]: v0.14.2 — Uniqueue Runtime Compatibility
 
-- Task: Restructure relay components from `/relay/` to `/nodes/` + `/scripts/`
-- Implementation: Moved relay server to `nodes/relay.js`, deployment script to `scripts/deploy-relay.sh`
-- Impact: Cleaner separation between runtime nodes and deployment automation
-- Insights: Democracy via Bash (relay scripts as succession instrument); Symmetry of Trust (plaintext justified by validation-only security)
+- Task: Fix headless leaderboard startup when deployed Uniqueue lacks `snapshot()`
+- Implementation: Added `getQueueSnapshot()` compatibility helper for current `snapshot()`, iterable queues, and older `.data` arrays; routed root hashing, persistence, and preview sync through it
+- Impact: Leaderboard node can load persisted records across Uniqueue 1.3/1.4 API shapes without crashing
+- Insights: Runtime Dependency Drift; Compatibility Shim before Internal Fallback
 
-[Legacy-0]: Philosophical Foundation & AGENTS Genesis
+[Legacy-0]: v0.14.1 — Self-Contained Relay Scripts
 
-- Task: Document collective identity, protocol autonomy; establish self-improving knowledge architecture
-- Implementation: Expanded Overall Concept with shared playerName semantics; open relay infrastructure; protocol-not-product framing; Critical/Tactical distinction; tiered conventions
-- Impact: Protocol-as-game philosophy articulated; AI context initialization optimized; change boundaries established
-- Insights: Collective Identity (playerName as shared credential); Immortal Software (open relay = no shutdown); Proof-by-Replay; Defense-by-Validation; KISS Resilience
+- Task: Remove cross-script dependency from relay deployment lifecycle scripts
+- Implementation: Inlined shell helpers into relay lifecycle scripts; removed runtime `_common.sh` sourcing/fetching and the obsolete helper file
+- Impact: Each curl-downloaded script is independently executable on a fresh server; relay ops no longer depend on a second local or remote script being reachable
+- Insights: Single-File Ops Artifacts; Bootstrap Reliability over DRY
+
+[Legacy-1]: v0.14.0 — Dependency API Compatibility
+
+- Task: Adapt leaderboard protocol to `@llblab/uniqueue` 1.4 and harden relay deployment scripts
+- Implementation: Replaced direct `.data`/`.indexes` access with `snapshot()`/`get()`; made deploy verify Node.js 22+ plus npm and use absolute npm path; refactored undeploy into idempotent safe-removal steps
+- Impact: Leaderboards load persisted data; relay installs verify usable Node/npm; relay removal is safer across Debian/Fedora/CentOS
+- Insights: Public Dependency Surfaces; Deployment Runtime Validation

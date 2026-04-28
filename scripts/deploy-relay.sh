@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# Output formatting functions for status messages
 log() {
     echo -e "\033[0;32m[INFO]\033[0m $1"
 }
@@ -15,13 +14,99 @@ error() {
     exit 1
 }
 
-# Verify root privileges
-if [ "$(id -u)" != "0" ]; then
-    error "This script must be run as root (sudo)"
-fi
+require_root() {
+    if [ "$(id -u)" != "0" ]; then
+        error "This script must be run as root (sudo)"
+    fi
+}
 
-# Determine execution mode (interactive vs automated)
-INTERACTIVE=$([ -t 0 ] && echo true || echo false)
+detect_interactive() {
+    [ -t 0 ] && echo true || echo false
+}
+
+get_node_major() {
+    node -v 2>/dev/null | cut -d. -f1 | tr -d v
+}
+
+get_rpm_package_manager() {
+    if command -v dnf &>/dev/null; then
+        echo dnf
+        return 0
+    fi
+    if command -v yum &>/dev/null; then
+        echo yum
+        return 0
+    fi
+    return 1
+}
+
+install_rpm_dependencies() {
+    local package_manager="$1"
+    if [ -f /etc/centos-release ] || { [ -f /etc/redhat-release ] && [ ! -f /etc/fedora-release ]; }; then
+        "$package_manager" install -y epel-release || warn "Failed to install epel-release; certbot packages may be unavailable"
+    fi
+    "$package_manager" install -y git nginx certbot lsof curl || error "Failed to install base dependencies"
+    "$package_manager" install -y python3-certbot-nginx || warn "Failed to install python3-certbot-nginx; continuing because webroot mode does not require it"
+    "$package_manager" install -y policycoreutils-python-utils || \
+        "$package_manager" install -y policycoreutils-python || \
+        warn "Failed to install SELinux policy utilities; continuing"
+}
+
+ensure_node_runtime() {
+    : "${REQUIRED_NODE_MAJOR:=22}"
+    : "${NODESOURCE_MAJOR:=22}"
+    local current_major
+    local install_major
+    local package_manager
+    current_major=$(get_node_major || echo 0)
+    if command -v node &>/dev/null && [ "${current_major:-0}" -ge "$REQUIRED_NODE_MAJOR" ] && command -v npm &>/dev/null; then
+        NODE_BIN=$(command -v node)
+        NPM_BIN=$(command -v npm)
+        return
+    fi
+    install_major="$NODESOURCE_MAJOR"
+    if [ "${current_major:-0}" -ge "$REQUIRED_NODE_MAJOR" ]; then
+        install_major="$current_major"
+    fi
+    warn "Node.js >= $REQUIRED_NODE_MAJOR with npm was not found. Installing NodeSource Node.js $install_major.x..."
+    if command -v apt-get &>/dev/null; then
+        curl -fsSL "https://deb.nodesource.com/setup_$install_major.x" | bash -
+        apt-get install -y nodejs
+    elif package_manager=$(get_rpm_package_manager); then
+        curl -fsSL "https://rpm.nodesource.com/setup_$install_major.x" | bash -
+        "$package_manager" install -y nodejs
+    else
+        error "Unsupported package manager. This script requires apt, dnf, or yum."
+    fi
+    NODE_BIN=$(command -v node || true)
+    NPM_BIN=$(command -v npm || true)
+    current_major=$(get_node_major || echo 0)
+    if [ -z "$NODE_BIN" ] || [ -z "$NPM_BIN" ]; then
+        error "Node.js/npm installation failed. Install Node.js $REQUIRED_NODE_MAJOR+ with npm and rerun this script."
+    fi
+    if [ "${current_major:-0}" -lt "$REQUIRED_NODE_MAJOR" ]; then
+        error "Node.js $REQUIRED_NODE_MAJOR+ is required, found $($NODE_BIN -v)."
+    fi
+}
+
+run_as_user() {
+    local user="$1"
+    shift
+    if command -v runuser &>/dev/null; then
+        runuser -u "$user" -- "$@"
+    elif command -v sudo &>/dev/null; then
+        sudo -u "$user" "$@"
+    else
+        error "Neither runuser nor sudo is available to switch users."
+    fi
+}
+
+run_as_digifall() {
+    run_as_user digifall "$@"
+}
+
+require_root
+INTERACTIVE=$(detect_interactive)
 [ "$INTERACTIVE" = false ] && warn "Running in non-interactive mode. Using default values."
 
 # Configuration defaults
@@ -29,6 +114,10 @@ APP_DIR="/opt/digifall"
 DEFAULT_DOMAIN="relay.digifall.app"
 DEFAULT_EMAIL="shlavik@gmail.com"
 DEFAULT_RESTART_FREQUENCY="daily"
+REQUIRED_NODE_MAJOR="22"
+NODESOURCE_MAJOR="22"
+NODE_BIN=""
+NPM_BIN=""
 
 # Collect configuration in interactive mode
 if [ "$INTERACTIVE" = true ]; then
@@ -47,31 +136,20 @@ log "Using domain: $DOMAIN"
 # Install required dependencies based on distribution
 if command -v apt-get &>/dev/null; then
     log "Installing dependencies with apt..."
-
-    # Setup NodeSource for Node.js 24
-    if ! command -v node &>/dev/null || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 18 ]; then
-        curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-    fi
-
     apt-get update
-    apt-get install -y git nginx certbot python3-certbot-nginx nodejs lsof curl
-
+    apt-get install -y git nginx certbot lsof curl
+    apt-get install -y python3-certbot-nginx || warn "Failed to install python3-certbot-nginx; continuing because webroot mode does not require it"
+    ensure_node_runtime
     # Configure firewall for Debian/Ubuntu
     if command -v ufw &>/dev/null; then
         log "Configuring firewall for HTTP and HTTPS"
         ufw allow 80/tcp || warn "Failed to allow HTTP in firewall"
         ufw allow 443/tcp || warn "Failed to allow HTTPS in firewall"
     fi
-elif command -v dnf &>/dev/null; then
-    log "Installing dependencies with dnf..."
-
-    # Setup NodeSource for Node.js 24
-    if ! command -v node &>/dev/null || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 18 ]; then
-        curl -fsSL https://rpm.nodesource.com/setup_24.x | bash -
-    fi
-
-    dnf install -y git nginx certbot python3-certbot-nginx nodejs lsof curl policycoreutils-python-utils
-
+elif RPM_PACKAGE_MANAGER=$(get_rpm_package_manager); then
+    log "Installing dependencies with $RPM_PACKAGE_MANAGER..."
+    install_rpm_dependencies "$RPM_PACKAGE_MANAGER"
+    ensure_node_runtime
     # Configure firewall for Fedora/RHEL
     if command -v firewall-cmd &>/dev/null; then
         log "Configuring firewall for HTTP and HTTPS"
@@ -80,7 +158,7 @@ elif command -v dnf &>/dev/null; then
         firewall-cmd --reload || warn "Failed to reload firewall"
     fi
 else
-    error "Unsupported package manager. This script requires apt or dnf."
+    error "Unsupported package manager. This script requires apt, dnf, or yum."
 fi
 
 # Set up application code repository
@@ -97,7 +175,7 @@ fi
 
 # Install dependencies
 log "Installing Node.js dependencies (production only)..."
-npm install --omit=dev || error "Failed to install Node.js dependencies"
+"$NPM_BIN" install --omit=dev || error "Failed to install Node.js dependencies"
 
 # Create dedicated user for the service
 if ! id -u digifall > /dev/null 2>&1; then
@@ -113,7 +191,7 @@ chown -R digifall:digifall "$APP_DIR/nodes/relay/peerstore"
 
 # Start the application temporarily as digifall user to verify it works
 log "Starting application temporarily for 5 seconds..."
-cd "$APP_DIR" && sudo -u digifall npm run relay &
+(cd "$APP_DIR" && run_as_digifall "$NPM_BIN" run relay) &
 APP_PID=$!
 sleep 5
 
@@ -151,7 +229,7 @@ Type=simple
 User=digifall
 Group=digifall
 WorkingDirectory=$APP_DIR
-ExecStart=$(which npm) run relay
+ExecStart=$NPM_BIN run relay
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

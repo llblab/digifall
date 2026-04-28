@@ -4,7 +4,7 @@ import { toString as uint8ArrayToString } from "uint8arrays/to-string";
 
 /** @type {readonly string[]} */
 export const DEFAULT_RELAYS = Object.freeze([
-  "/dns4/r2.digifall.app/tcp/443/wss/p2p/12D3KooWPN8DqXM1ytrTs9bxpWt3ZnMLEWxHc3AEX2kKg62qhesv",
+  "/dns4/r1.digifall.app/tcp/443/wss/p2p/12D3KooWHPiLGQPesjGdBZW3WbGSf6avJYQZj64RNqyLcyXW28UG",
 ]);
 
 /** @type {Readonly<{ root: string; preview: string }>} */
@@ -109,6 +109,18 @@ export function computeRootHash(records) {
   );
 }
 
+/**
+ * @param {(Uniqueue & { snapshot?: () => LeaderboardRecord[]; data?: LeaderboardRecord[] }) | null | undefined} queue
+ * @returns {LeaderboardRecord[]}
+ */
+function getQueueSnapshot(queue) {
+  if (!queue) return [];
+  if (typeof queue.snapshot === "function") return queue.snapshot();
+  if (typeof queue[Symbol.iterator] === "function") return Array.from(queue);
+  if (Array.isArray(queue.data)) return [...queue.data];
+  return [];
+}
+
 export class LeaderboardCore {
   /** @type {string[]} */
   recordTypes;
@@ -149,7 +161,7 @@ export class LeaderboardCore {
    */
   updateRoot(type) {
     const queue = this.queues[type];
-    this.roots[type] = queue ? computeRootHash(queue.data) : 0;
+    this.roots[type] = queue ? computeRootHash(getQueueSnapshot(queue)) : 0;
   }
 
   /**
@@ -172,7 +184,8 @@ export class LeaderboardCore {
    * @returns {LeaderboardRecord[]}
    */
   getData(type) {
-    return this.queues[type]?.data ?? [];
+    const queue = this.queues[type];
+    return queue ? getQueueSnapshot(queue) : [];
   }
 
   /**
@@ -206,15 +219,15 @@ export class LeaderboardCore {
     const { type, playerName, value } = record;
     const queue = this.queues[type];
     if (!queue) return false;
-    const { data, indexes } = queue;
-    const index = indexes.get(playerName);
-    if (index in data && data[index].value >= value) return false;
-    queue.push(record);
+    const previous = queue.get(playerName);
+    if (previous && previous.value >= value) return false;
+    const evicted = queue.push(record);
+    if (evicted === record) return false;
     this.updateRoot(type);
     if (this.debug) {
       console.log("LEADERBOARD UPDATED:", type, playerName, value);
     }
-    this.onUpdate?.(type, queue.data);
+    this.onUpdate?.(type, getQueueSnapshot(queue));
     return true;
   }
 
@@ -226,9 +239,8 @@ export class LeaderboardCore {
     const { type, playerName, value } = record;
     const queue = this.queues[type];
     if (!queue) return false;
-    const { data, indexes } = queue;
-    const index = indexes.get(playerName);
-    if (index in data && data[index].value >= value) return false;
+    const previous = queue.get(playerName);
+    if (previous && previous.value >= value) return false;
     if (this.validateRecord) {
       try {
         const validatedRecord = await this.validateRecord(record);
@@ -264,7 +276,7 @@ export class LeaderboardCore {
             const [type, remoteRoot] = data;
             if (!(type in this.roots)) return;
             if (remoteRoot === 0) {
-              for (const game of this.queues[type].data) {
+              for (const game of getQueueSnapshot(this.queues[type])) {
                 stream.send(toMessage(game));
               }
               return;
@@ -299,7 +311,7 @@ export class LeaderboardCore {
           if (data === null) {
             Array.from(touchedTypes)
               .flatMap((type) =>
-                this.queues[type].data.filter(
+                getQueueSnapshot(this.queues[type]).filter(
                   (game) => !skippedNames[type].has(game.playerName),
                 ),
               )
@@ -310,9 +322,9 @@ export class LeaderboardCore {
           const { type, playerName, value } = data;
           if (!(type in this.queues)) return;
           touchedTypes.add(type);
-          const index = this.queues[type].indexes.get(playerName);
-          if (index === undefined) return;
-          if (this.queues[type].data[index].value > value) return;
+          const current = this.queues[type].get(playerName);
+          if (!current) return;
+          if (current.value > value) return;
           skippedNames[type].add(playerName);
         } catch (e) {
           if (this.debug) console.error(e);
@@ -362,7 +374,7 @@ export class LeaderboardCore {
             onRecordMessage(message);
           });
           types.forEach((type) =>
-            this.queues[type].data.forEach(({ playerName, value }) =>
+            getQueueSnapshot(this.queues[type]).forEach(({ playerName, value }) =>
               stream.send(toMessage({ type, playerName, value })),
             ),
           );
