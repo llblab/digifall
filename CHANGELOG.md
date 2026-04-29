@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.1 Second Default Relay
+
+### P2P Infrastructure
+
+- `Second Default Relay`: Added `r2.digifall.app` to `DEFAULT_RELAYS`, giving clients and nodes a second built-in relay path for better network resilience
+- `Leaderboard Package`: Bumped `@digifall/leaderboard` to 1.1.1 alongside the app version
+- `Bootstrap Data`: Refreshed tracked leaderboard node data for bootstrap/backup continuity
+
+### CI
+
+- `Node 24 GitHub Actions`: Deploy workflow now uses Node.js 24 with latest checkout/setup-node actions so `npm ci` runs under npm 11, matching the lockfile-generating local toolchain and avoiding npm 10 optional peer lockfile drift
+
+### Context
+
+- `AGENTS.md Change History Removal`: Removed rolling completed-work history from durable agent protocol; completed delivery history now belongs in this changelog per ABC context split
+
 ## 0.14.0 Bumd Deps + New Default Relay
 
 ### Leaderboard Protocol

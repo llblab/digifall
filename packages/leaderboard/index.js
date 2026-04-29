@@ -5,6 +5,7 @@ import { toString as uint8ArrayToString } from "uint8arrays/to-string";
 /** @type {readonly string[]} */
 export const DEFAULT_RELAYS = Object.freeze([
   "/dns4/r1.digifall.app/tcp/443/wss/p2p/12D3KooWHPiLGQPesjGdBZW3WbGSf6avJYQZj64RNqyLcyXW28UG",
+  "/dns4/r2.digifall.app/tcp/443/wss/p2p/12D3KooWCyGBu37RppPBto2SNbXGuBY5qAWbKJxxqv1FMqxTiXif",
 ]);
 
 /** @type {Readonly<{ root: string; preview: string }>} */
@@ -374,8 +375,9 @@ export class LeaderboardCore {
             onRecordMessage(message);
           });
           types.forEach((type) =>
-            getQueueSnapshot(this.queues[type]).forEach(({ playerName, value }) =>
-              stream.send(toMessage({ type, playerName, value })),
+            getQueueSnapshot(this.queues[type]).forEach(
+              ({ playerName, value }) =>
+                stream.send(toMessage({ type, playerName, value })),
             ),
           );
           stream.send(toMessage(null));

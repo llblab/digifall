@@ -167,6 +167,10 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Pattern: Keep curl-installed lifecycle scripts self-contained; duplicate shell helpers intentionally when single-file bootstrap reliability matters more than DRY
   - See: [ensure_node_runtime()](scripts/deploy-relay.sh)
 
+- CI Toolchain Parity: Keep GitHub Actions Node/npm aligned with the local lockfile-generating toolchain
+  - Rationale: npm 10 and npm 11 serialize optional peer dependencies differently; mismatched npm majors can make `npm ci` reject an otherwise valid lockfile
+  - Pattern: Build/deploy workflow uses Node 24/npm 11; if CI Node changes, regenerate and validate `package-lock.json` with that npm major
+
 - Git-Tracked Bootstrap Data: Leaderboard `data.json` committed to repo for disaster recovery and new node bootstrap
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution
   - Trade-off: Manual commits required to update backup (acceptable for low-frequency changes)
@@ -247,47 +251,14 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Step 1: Verify architectural consistency (no non-deterministic operations in core.js)
 - Step 2: Execute quality validation: `npm run check` (svelte-check) and `npm run lint` (stylelint)
 - Step 3: Update affected Core Entities (section 2) if data structures changed
-- Step 4: Mandatory Context Evolution:
-  - Analyze impact on determinism, P2P sync, or validation logic
-  - Update sections 1-5 for architectural drift
-  - Add substantive Change History entry with task, implementation, impact, insights
-  - Change History structure: `[Current]` → `[Previous]` → `[Legacy-0]` → `[Legacy-1]` → `[Legacy-2]` (newest first)
-  - On new entry: current becomes previous, previous becomes legacy-0, shift legacy indexes
+- Step 4: Sync root context by responsibility:
+  - `AGENTS.md`: durable rules, conventions, architecture, reusable constraints
+  - `BACKLOG.md`: open, blocked, gated, or next work only
+  - `CHANGELOG.md`: completed delivery history only
+  - `README.md` and subtree README files: human navigation and usage entrypoints
 - Step 5: Size Management (if AGENTS.md exceeds 300 lines):
   - Trigger garbage collection phase
-  - Change History: keep max 3 Legacy entries; drop oldest, extract lasting insights into sections 3-5
-  - Analyze bloat sources: prune verbose sections outside Change History (redundant references, over-detailed patterns)
-  - Preserve: architectural decisions rationale, philosophical foundations, active conventions
-  - Remove: implementation minutiae superseded by code, resolved open questions, dated references
+  - Move completed-delivery history to `CHANGELOG.md`
+  - Preserve architectural decisions, rationale, philosophical foundations, and active conventions
+  - Remove implementation minutiae superseded by code, resolved open questions, and dated references
 
-## 8. Change History
-
-_Format: Task → Implementation → Impact → Insights_
-
-[Current]: v0.14.3 — Node 22 CI Baseline
-
-- Task: Fix `npm ci` failure on GitHub runner using Node 20 and stale lock metadata
-- Implementation: Set deploy workflow to Node 22; declared `node >=22` in package metadata; refreshed lockfile with npm 10-compatible optional peer entries; overrode `stylelint-order` to a Stylelint 17-compatible version; narrowed lint globs away from generated `dist/`
-- Impact: CI installs with the same Node baseline as runtime dependencies; peer warning is removed; lint remains source-scoped after builds
-- Insights: CI Runtime Must Match Dependency Engines; Generated Artifacts Are Not Lint Inputs
-
-[Previous]: v0.14.2 — Uniqueue Runtime Compatibility
-
-- Task: Fix headless leaderboard startup when deployed Uniqueue lacks `snapshot()`
-- Implementation: Added `getQueueSnapshot()` compatibility helper for current `snapshot()`, iterable queues, and older `.data` arrays; routed root hashing, persistence, and preview sync through it
-- Impact: Leaderboard node can load persisted records across Uniqueue 1.3/1.4 API shapes without crashing
-- Insights: Runtime Dependency Drift; Compatibility Shim before Internal Fallback
-
-[Legacy-0]: v0.14.1 — Self-Contained Relay Scripts
-
-- Task: Remove cross-script dependency from relay deployment lifecycle scripts
-- Implementation: Inlined shell helpers into relay lifecycle scripts; removed runtime `_common.sh` sourcing/fetching and the obsolete helper file
-- Impact: Each curl-downloaded script is independently executable on a fresh server; relay ops no longer depend on a second local or remote script being reachable
-- Insights: Single-File Ops Artifacts; Bootstrap Reliability over DRY
-
-[Legacy-1]: v0.14.0 — Dependency API Compatibility
-
-- Task: Adapt leaderboard protocol to `@llblab/uniqueue` 1.4 and harden relay deployment scripts
-- Implementation: Replaced direct `.data`/`.indexes` access with `snapshot()`/`get()`; made deploy verify Node.js 22+ plus npm and use absolute npm path; refactored undeploy into idempotent safe-removal steps
-- Impact: Leaderboards load persisted data; relay installs verify usable Node/npm; relay removal is safer across Debian/Fedora/CentOS
-- Insights: Public Dependency Surfaces; Deployment Runtime Validation
