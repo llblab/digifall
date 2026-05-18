@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.14.2 Dependency Lock Refresh
+
+### Dependencies
+
+- `Vite 8 / Svelte Tooling`: Regenerated `package-lock.json` from the upgraded `package.json` dependency set so clean `npm install` resolves `@sveltejs/vite-plugin-svelte@7.1.2` with `vite@8.0.13` instead of the stale Vite 7 tree
+
+### P2P
+
+- `Relay Rotation`: Removed the `use-all-relays` localStorage debug flag; browser clients always use relay rotation gating
+
+### Validation
+
+- `Validation Domain Module`: Kept replay validation in the `src/validation.js` domain module as the single source for record replay validation and input sanitizers, with isolated initial store state for parallel replay checks
+- `Record Validator CLI`: Added `npm run validate-records` for replay-validating leaderboard record JSON from a file path or stdin
+- `Headless Node Validation`: Leaderboard nodes now replay-validate inbound and persisted records instead of trusting received data
+- `Bootstrap Data Cleanup`: Removed invalid `vggjj` highCombo record whose replay value is 3, not the persisted 303
+
 ## 0.14.1 Second Default Relay
 
 ### P2P Infrastructure

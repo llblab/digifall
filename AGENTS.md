@@ -37,7 +37,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Seed: Deterministic PRNG root derived from playerName + timestamp
   - See: [getSeed()](src/core.js#L727-L739)
 - Record: Validated game result with type, moves sequence, playerName, timestamp, and value
-  - See: [GameRecord typedef](src/validation.js#L13-L20), [RECORD_TYPES](src/constants.js#L60)
+  - See: [GameRecord typedef](src/validation.js), [RECORD_TYPES](src/constants.js#L60)
 - Relays Config: Atomically-managed relay state with active list and applied defaults tracking
   - See: [relaysStore](src/stores.js#L80-L85), [INITIAL_VALUES.relays](src/constants.js#L89-L93)
 - UniQueue: Priority heap + unique key map for leaderboard deduplication and sorting
@@ -63,7 +63,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Validation Through Replay: Records validated by re-executing game with same seed and moves
   - Rationale: Mathematical proof of legitimacy without trusted authority
   - Trade-offs: 3-second timeout limit constrains maximum game length
-  - See: [validateRecord()](src/validation.js#L30-L88)
+  - See: [validateRecord](src/validation.js)
 
 - P2P Leaderboard: Floodsub + eventual consistency without consensus algorithm
   - Rationale: Zero hosting cost, censorship resistance, community ownership
@@ -96,8 +96,8 @@ Not a traditional game-as-product, but a protocol-as-game:
 - `/src/`: Application source code
   - `core.js`: Pure deterministic game logic and phase state machine (~900 LOC)
   - `stores.js`: Svelte reactive state containers with .get() extension, relay state management
-  - `validation.js`: Record verification through game replay, multiaddr validation
   - `leaderboard.js`: P2P sync protocol (root hash exchange, preview diffing)
+  - `validation.js`: Record replay validation, player name sanitizing, and multiaddr validation
   - `persistence.js`: localStorage and IndexedDB store factories (business-logic-agnostic)
 
   - `sounds.js`: Howler.js audio management
@@ -110,17 +110,19 @@ Not a traditional game-as-product, but a protocol-as-game:
     - Protocol constants (`PROTOCOLS`), utilities (`compare`, `parseMessage`, `toMessage`)
     - Hash functions (`squashIntegers`, `getSeed`, `computeRootHash`)
     - `DEFAULT_RELAYS` as single source of truth
+
 - `/nodes/`: Server-side infrastructure (each node in own folder with colocated data)
   - `relay/`: Standalone libp2p circuit relay for NAT traversal
     - `index.js`: Relay server implementation
     - `peerstore/`: Persistent peer identity (gitignored)
   - `leaderboard/`: Headless leaderboard node for bootstrapping peers
-    - `index.js`: Node implementation (no validation, trusts network)
+    - `index.js`: Node implementation with replay validation for inbound and persisted records
     - `data.json`: Persistent leaderboard storage (tracked in git for bootstrap/backup)
     - `peerstore/`: Persistent peer identity (gitignored)
 - `/scripts/`: Deployment and operations automation
   - `deploy-relay.sh`: One-command relay deployment with systemd + SSL + certbot renewal hooks
   - `undeploy-relay.sh`: Clean removal of relay services, certificates, and user
+  - `validate-records.js`: CLI validator for replay-checking leaderboard records from JSON files or stdin
 - `/public/`: Static assets (fonts, images, sounds, manifest.json)
 - `/dist/`: Vite build output (generated)
 - `vite.config.js`: Build configuration with PWA plugin
@@ -139,10 +141,10 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Pattern: `store.get = () => get(store)`
   - See: [createStore()](src/stores.js#L13-L17)
 
-- Validation Timeout: 5-second limit for replay prevents DoS through artificially long games
+- Validation Timeout: 3-second limit for replay prevents DoS through artificially long games
   - Rationale: Malicious peer could send infinite-length game record; game mechanics naturally constrain legitimate games well below timeout
   - Note: Game difficulty makes 1000+ move records practically unreachable before energy depletion
-  - See: [validateRecord() timeout](src/validation.js#L54-L57)
+  - See: [createRecordValidator() timeout](src/validation.js)
 
 ### Infrastructure (Node Operations)
 
@@ -152,7 +154,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Early Rejection: Validate record constraints (moves length, field types) before expensive replay
   - Rationale: O(1) rejection of malformed records prevents DoS via crafted payloads
-  - See: [MAX_MOVES_LENGTH](src/constants.js#L9), [validateRecord()](src/validation.js#L72-L74)
+  - See: [MAX_MOVES_LENGTH](src/constants.js#L9), [createRecordValidator()](src/validation.js)
 
 - Symmetric Deploy/Undeploy: Both scripts support interactive and non-interactive modes for deb/rpm systems
   - Rationale: Automated CI/CD pipelines need non-interactive; manual ops need confirmation prompts
@@ -174,6 +176,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Git-Tracked Bootstrap Data: Leaderboard `data.json` committed to repo for disaster recovery and new node bootstrap
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution
   - Trade-off: Manual commits required to update backup (acceptable for low-frequency changes)
+  - Constraint: Bootstrap data must pass `npm run validate-records -- nodes/leaderboard/data.json` before commit
 
 ### Recommended (Performance and maintainability)
 
@@ -202,7 +205,6 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Debug Flags: localStorage gates for development features
   - `debug`: Enable console logging
   - `reload`: Auto-reload interval in seconds
-  - `use-all-relays`: Connect to all relays instead of rotating
   - See: [constants.js](src/constants.js#L1-L5)
 
 - Relay Fallback: Automatic relay switching on connection failure with 73-second retry interval
@@ -261,4 +263,3 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Move completed-delivery history to `CHANGELOG.md`
   - Preserve architectural decisions, rationale, philosophical foundations, and active conventions
   - Remove implementation minutiae superseded by code, resolved open questions, and dated references
-

@@ -1,10 +1,10 @@
 import { DEFAULT_RELAYS } from "@digifall/leaderboard";
 
-export const DEBUG = Boolean(localStorage.getItem("debug"));
+const localStorage = globalThis.localStorage;
 
-export const RELOAD_IN_SEC = Number(localStorage.getItem("reload"));
+export const DEBUG = Boolean(localStorage?.getItem("debug"));
 
-export const USE_ALL_RELAYS = Boolean(localStorage.getItem("use-all-relays"));
+export const RELOAD_IN_SEC = Number(localStorage?.getItem("reload"));
 
 export const MAX_RECORDS = 1e3;
 

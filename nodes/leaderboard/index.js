@@ -6,6 +6,7 @@ import {
   PROTOCOLS,
   parseMessage,
 } from "@digifall/leaderboard";
+import { validateRecord } from "../../src/validation.js";
 import { bootstrap } from "@libp2p/bootstrap";
 import { circuitRelayTransport } from "@libp2p/circuit-relay-v2";
 import { loadOrCreateSelfKey } from "@libp2p/config";
@@ -56,6 +57,28 @@ async function savePersistedData(data) {
   await fs.writeFile(PERSISTENCE_PATH, JSON.stringify(data, null, 2));
 }
 
+async function validatePersistedRecords(type, records) {
+  const results = await Promise.allSettled(records.map(validateRecord));
+  const validRecords = [];
+  let dirty = false;
+  results.forEach((result, index) => {
+    const original = records[index];
+    if (result.status !== "fulfilled") {
+      dirty = true;
+      console.warn(
+        "Dropped invalid persisted record",
+        type,
+        original?.playerName,
+      );
+      if (DEBUG) console.error(result.reason);
+      return;
+    }
+    validRecords.push(result.value);
+    if (result.value.value !== original.value) dirty = true;
+  });
+  return { records: validRecords, dirty };
+}
+
 let lastPeerCount = 0;
 let lastRecordCount = 0;
 
@@ -86,6 +109,7 @@ const core = new LeaderboardCore({
   recordTypes: DEFAULT_RECORD_TYPES,
   maxRecords: MAX_RECORDS,
   debug: DEBUG,
+  validateRecord,
   onUpdate: async (_type, _records) => {
     await savePersistedData(core.getAllData());
     logStatus();
@@ -94,22 +118,26 @@ const core = new LeaderboardCore({
 
 const persistedData = await loadPersistedData();
 if (persistedData) {
+  let dirty = false;
   for (const type of DEFAULT_RECORD_TYPES) {
     if (persistedData[type]) {
-      core.loadData(type, persistedData[type]);
+      const result = await validatePersistedRecords(type, persistedData[type]);
+      core.loadData(type, result.records);
+      dirty = dirty || result.dirty;
     }
   }
   const totalRecords = DEFAULT_RECORD_TYPES.reduce(
     (sum, type) => sum + core.getData(type).length,
     0,
   );
-  console.log(`Loaded ${totalRecords} records from persistence`);
+  if (dirty) await savePersistedData(core.getAllData());
+  console.log(`Loaded ${totalRecords} validated records from persistence`);
 }
 
 async function handleRecordMessage(message) {
   try {
     const record = parseMessage(message);
-    if (record) core.handleRecord(record);
+    if (record) await core.handleRecordWithValidation(record);
   } catch (e) {
     if (DEBUG) console.error(e);
   }

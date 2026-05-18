@@ -17,14 +17,7 @@ import { multiaddr } from "@multiformats/multiaddr";
 import { IDBDatastore } from "datastore-idb";
 import { createLibp2p } from "libp2p";
 
-import {
-  DEBUG,
-  KEYS,
-  MAX_RECORDS,
-  PHASES,
-  RECORD_TYPES,
-  USE_ALL_RELAYS,
-} from "./constants.js";
+import { DEBUG, KEYS, MAX_RECORDS, PHASES, RECORD_TYPES } from "./constants.js";
 import { createIndexedDBFactory } from "./persistence.js";
 import {
   activeRelaysStore,
@@ -188,7 +181,6 @@ async function initP2PLeaderboard() {
               remotePeer.toString() === remotePeerId && status !== "closed",
           );
         if (hasConnection) return true;
-        if (USE_ALL_RELAYS) return false;
         if (relayPeerIdsStore.get().includes(remotePeerId)) {
           return remotePeerId !== getCurrentRelayPeerId();
         }
