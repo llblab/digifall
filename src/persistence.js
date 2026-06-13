@@ -1,23 +1,46 @@
 import { get, writable } from "svelte/store";
 
+export function loadLocalStorageJson(key, initialValue) {
+  try {
+    const saved = globalThis.localStorage?.getItem(key);
+    return saved ? JSON.parse(saved) : initialValue;
+  } catch (error) {
+    console.warn(`Failed to load ${key} from localStorage`, error);
+    return initialValue;
+  }
+}
+
+function saveLocalStorageJson(key, value) {
+  try {
+    globalThis.localStorage?.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Failed to save ${key} to localStorage`, error);
+  }
+}
+
 export function createLocalStorageStore(
   key,
   initialValue,
-  load = (initialValue) => {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : initialValue;
-  },
-  save = (value) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  },
+  load = (initialValue) => loadLocalStorageJson(key, initialValue),
+  save = (value) => saveLocalStorageJson(key, value),
 ) {
-  const store = writable(load(initialValue) || initialValue);
+  let value = initialValue;
+  try {
+    value = load(initialValue) || initialValue;
+  } catch (error) {
+    console.warn(`Failed to initialize ${key}`, error);
+  }
+  const store = writable(value);
   return {
     get() {
       return get(store);
     },
     set(value) {
-      save(value);
+      try {
+        save(value);
+      } catch (error) {
+        console.warn(`Failed to save ${key}`, error);
+      }
       store.set(value);
     },
     update(cb) {

@@ -10,6 +10,9 @@
       "default": "./index.js"
     }
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "@llblab/uniqueue": "1.4.0",
     "uint8arrays": "5.1.1"

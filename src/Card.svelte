@@ -48,9 +48,12 @@
     width: 21rem;
     height: 21rem;
     cursor: pointer;
+    touch-action: none;
+    -webkit-touch-callout: none;
     transition-duration: calc(var(--card-duration) * 1ms);
     transition-property: bottom;
     transition-timing-function: cubic-bezier(0.56, 0, 1, 1);
+    user-select: none;
     will-change: bottom;
 
     &.blink {

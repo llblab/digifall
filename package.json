@@ -1,6 +1,6 @@
 {
   "name": "digifall",
-  "version": "0.14.2",
+  "version": "0.14.3",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -20,7 +20,7 @@
     "relay": "node nodes/relay/index.js",
     "leaderboard": "node nodes/leaderboard/index.js",
     "validate-records": "node scripts/validate-records.js",
-    "test": "npm test --workspaces",
+    "test": "node --test src/*.test.js && npm test --workspaces",
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "lint": "stylelint 'src/**/*.{css,svelte}' '*.html' 'public/**/*.html' --fix",
     "format": "prettier --write ."

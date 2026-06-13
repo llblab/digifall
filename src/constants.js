@@ -1,10 +1,16 @@
 import { DEFAULT_RELAYS } from "@digifall/leaderboard";
 
-const localStorage = globalThis.localStorage;
+function getLocalStorageItem(key) {
+  try {
+    return globalThis.localStorage?.getItem(key);
+  } catch {
+    return null;
+  }
+}
 
-export const DEBUG = Boolean(localStorage?.getItem("debug"));
+export const DEBUG = Boolean(getLocalStorageItem("debug"));
 
-export const RELOAD_IN_SEC = Number(localStorage?.getItem("reload"));
+export const RELOAD_IN_SEC = Number(getLocalStorageItem("reload"));
 
 export const MAX_RECORDS = 1e3;
 
