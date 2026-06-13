@@ -13,6 +13,14 @@ A deterministic survival puzzle game begins with a reserve of 100 energy points.
 - `Immortal Software`: A protocol-as-game designed to survive without central servers
 - `Deterministic Core`: All game logic is seeded and reproducible
 - `Trustless P2P`: Leaderboard data synchronizes via libp2p relays
+- `Domain DAG`: `domain-dag.json` records the intended dependency layers and boundary checks; the validator skill is vendored in `.agents/skills/domain-dag`
+
+# Project Control
+
+- [Agent protocol](AGENTS.md)
+- [Backlog](BACKLOG.md)
+- [Changelog](CHANGELOG.md)
+- [Docs index](docs/README.md)
 
 # Server Nodes
 

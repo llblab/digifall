@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.4 Architecture Guardrails
+
+- `Architecture`: Added project-local Domain DAG validation config and vendored the Domain DAG skill under `.agents/skills/domain-dag`, covering browser source, shared leaderboard package, server nodes, scripts, layer direction, and core boundary rules
+- `Documentation`: Linked Domain DAG validation from the root README architecture overview and added a docs index for project-control navigation
+
 ## 0.14.3 Mobile Safari Hotfix
 
 - `Reliability`: Board/card long-press surfaces now explicitly disable native selection/callout gestures and cancel touch defaults so iOS long taps remain gameplay actions

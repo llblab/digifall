@@ -1,0 +1,84 @@
+{
+  "sourceRoots": ["src", "packages", "nodes", "scripts"],
+  "sourceExtensions": [".js", ".svelte"],
+  "entrypoints": [
+    "src/main.js",
+    "nodes/relay/index.js",
+    "nodes/leaderboard/index.js",
+    "scripts/validate-records.js"
+  ],
+  "importAliases": {
+    "@digifall/leaderboard": "packages/leaderboard/index.js"
+  },
+  "requireHeaders": false,
+  "sharedBucketSeverity": "warn",
+  "allowedSharedBuckets": ["src/constants.js"],
+  "layers": [
+    {
+      "name": "protocol-package",
+      "rank": 0,
+      "files": ["packages/leaderboard/**"]
+    },
+    {
+      "name": "game-domain",
+      "rank": 1,
+      "files": [
+        "src/core.js",
+        "src/validation.js",
+        "src/constants.js",
+        "src/persistence.js"
+      ]
+    },
+    {
+      "name": "app-state",
+      "rank": 2,
+      "files": ["src/stores.js", "src/sounds.js", "src/leaderboard.js"]
+    },
+    {
+      "name": "ui",
+      "rank": 3,
+      "files": ["src/**/*.svelte", "src/main.js"]
+    },
+    {
+      "name": "server-nodes",
+      "rank": 3,
+      "files": ["nodes/**", "scripts/**"]
+    }
+  ],
+  "forbiddenEdges": [
+    {
+      "from": "packages/leaderboard/**",
+      "to": "src/**",
+      "severity": "error",
+      "message": "Shared leaderboard package must not import app/client code"
+    },
+    {
+      "from": "src/core.js",
+      "to": "src/**/*.svelte",
+      "severity": "error",
+      "message": "Deterministic core must stay UI-independent"
+    },
+    {
+      "from": "src/validation.js",
+      "to": "src/**/*.svelte",
+      "severity": "error",
+      "message": "Replay validation must stay UI-independent"
+    },
+    {
+      "from": "src/persistence.js",
+      "to": "src/stores.js",
+      "severity": "error",
+      "message": "Generic persistence must not depend on app stores"
+    }
+  ],
+  "surfaceRules": [
+    {
+      "name": "large module pressure",
+      "files": ["src/*.js", "packages/**/*.js", "nodes/**/*.js"],
+      "metric": "lines",
+      "max": 800,
+      "severity": "warn",
+      "message": "Large module; review ownership before adding more responsibility"
+    }
+  ]
+}
