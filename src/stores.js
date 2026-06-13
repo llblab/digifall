@@ -9,7 +9,10 @@ import {
   getComboFromLog,
   getSeed,
 } from "./core.js";
-import { createLocalStorageStore } from "./persistence.js";
+import {
+  createLocalStorageStore,
+  loadLocalStorageJson,
+} from "./persistence.js";
 import { playWordUp } from "./sounds.js";
 
 /** @typedef {import('./core.js').ComboRow} ComboRow */
@@ -105,8 +108,7 @@ export const relaysStore = createLocalStorageStore(
   KEYS.relays,
   INITIAL_VALUES.relays,
   function loadRelays(initialValue) {
-    const saved = localStorage.getItem(KEYS.relays);
-    const parsed = saved ? JSON.parse(saved) : null;
+    const parsed = loadLocalStorageJson(KEYS.relays, null);
     if (!parsed) return initialValue;
     const activeSet = new Set(parsed.active ?? []);
     const appliedSet = new Set(parsed.applied ?? []);

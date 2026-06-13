@@ -221,10 +221,18 @@
     event.preventDefault();
   }
 
+  function preventNativeTouchAction(event = {}) {
+    if (!event.type?.startsWith("touch") && event.type !== "contextmenu") {
+      return;
+    }
+    if (event.cancelable) event.preventDefault();
+  }
+
   export function longpress(node, { duration = 400 } = {}) {
     let timer;
     $effect(() => {
       const start = (event = {}) => {
+        preventNativeTouchAction(event);
         node.dispatchEvent(
           new CustomEvent("longpressstart", { bubbles: true, detail: event }),
         );
@@ -235,20 +243,29 @@
         }, duration);
       };
       const stop = (event = {}) => {
+        preventNativeTouchAction(event);
         clearTimeout(timer);
         node.dispatchEvent(
           new CustomEvent("longpressend", { bubbles: true, detail: event }),
         );
       };
-      node.addEventListener("mousedown", start, { passive: true });
-      node.addEventListener("touchstart", start, { passive: true });
-      node.addEventListener("touchend", stop, { passive: true });
-      window.addEventListener("mouseup", stop, { passive: true });
+      node.addEventListener("mousedown", start);
+      node.addEventListener("contextmenu", preventNativeTouchAction);
+      node.addEventListener("touchstart", start, { passive: false });
+      node.addEventListener("touchmove", preventNativeTouchAction, {
+        passive: false,
+      });
+      node.addEventListener("touchend", stop, { passive: false });
+      node.addEventListener("touchcancel", stop, { passive: false });
+      window.addEventListener("mouseup", stop);
       return () => {
         clearTimeout(timer);
         node.removeEventListener("mousedown", start);
+        node.removeEventListener("contextmenu", preventNativeTouchAction);
         node.removeEventListener("touchstart", start);
+        node.removeEventListener("touchmove", preventNativeTouchAction);
         node.removeEventListener("touchend", stop);
+        node.removeEventListener("touchcancel", stop);
         window.removeEventListener("mouseup", stop);
       };
     });
@@ -310,6 +327,9 @@
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" fill-opacity=".6"><rect x="4" width="4" height="4" /><rect y="4" width="4" height="4" /></svg>');
     background-size: 6rem;
     box-shadow: var(--gloss-inset), var(--shadow-inset);
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
 
     &::before {
       position: absolute;

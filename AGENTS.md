@@ -184,6 +184,10 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: Keeps animation synchronized with deterministic game state
   - See: [checkRapid()](src/core.js#L138-L151)
 
+- Game Surface Owns Touch Gestures: Long-press gameplay zones must suppress browser-native selection/callout/scroll gestures at both CSS and event-listener boundaries
+  - Rationale: Mobile Safari can otherwise treat a long tap as text selection or callout instead of the game action; touch listeners that call `preventDefault()` must not be passive
+  - Pattern: Scope suppression to the board/card surface, keep the state machine unchanged, and avoid global overrides that break form controls or overlays
+
 - Move Encoding: Game actions serialized as base64-encoded integer arrays for compactness
   - Rationale: Reduces localStorage size and P2P bandwidth
   - See: [getBase64FromArray()](src/core.js#L103-L105)
@@ -223,6 +227,10 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Idempotent Migration: Relay migration runs on every load without persisting until user action
   - Rationale: localStorage is source of truth only when it differs from defaults; migration is cheap and deterministic
   - Pattern: `load()` transforms data, `save()` happens only on explicit `set()`/`update()`
+
+- LocalStorage as Cache: Client persistence must degrade to in-memory stores when localStorage is unavailable, full, private-mode restricted, or contains invalid JSON
+  - Rationale: Mobile Safari can throw on storage reads/writes; gameplay must continue because local persistence is not part of deterministic validation
+  - Pattern: Catch storage failures at persistence boundaries, keep reactive store updates synchronous, and reuse safe JSON loaders for custom migrations
 
 ### Shared Package Principles
 
