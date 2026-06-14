@@ -3,7 +3,7 @@
 ## 0.15.0 Android Play Release Pipeline
 
 - `Android`: Added a Bubblewrap Trusted Web Activity configuration for package `com.llblab.digifall`, version-synced from `package.json`, so Digifall can ship to Google Play as a hosted PWA wrapper
-- `CI`: Extended the main GitHub Pages workflow into an idempotent release pipeline that detects package version bumps, deploys the web app, creates or updates GitHub Releases, builds signed Android App Bundles, and can upload to Google Play
+- `CI`: Added pull request validation and an idempotent Android release workflow that detects package version bumps, creates or updates GitHub Releases, builds signed Android App Bundles, and can upload to Google Play
 - `Release Automation`: Added Android version-code, version-bump detection, TWA version sync, and release-notes generation scripts with manual dispatch support for the first internal catch-up release
 - `Documentation`: Added Android/Google Play release documentation covering required secrets, Play Console setup, manual dry run/internal publish commands, asset links verification, and device checks
 - `Safety`: Expanded ignore rules for keystores, service account files, signed APKs/AABs, and local secret material so release credentials and artifacts stay out of git
