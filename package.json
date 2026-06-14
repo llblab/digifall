@@ -1,6 +1,6 @@
 {
   "name": "digifall",
-  "version": "0.14.5",
+  "version": "0.15.0",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -17,15 +17,16 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "relay": "node nodes/relay/index.js",
-    "leaderboard": "node nodes/leaderboard/index.js",
-    "validate-records": "node scripts/validate-records.js",
+    "relay": "node nodes/relay/relay.mjs",
+    "leaderboard": "node nodes/leaderboard/leaderboard.mjs",
+    "validate-records": "node scripts/validate-records.mjs",
     "test": "node --test src/*.test.js && npm test --workspaces",
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "lint": "stylelint 'src/**/*.{css,svelte}' '*.html' 'public/**/*.html' --fix",
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@bubblewrap/cli": "1.24.1",
     "@sveltejs/vite-plugin-svelte": "7.1.2",
     "autoprefixer": "10.5.0",
     "postcss": "8.5.15",

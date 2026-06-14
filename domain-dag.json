@@ -1,11 +1,15 @@
 {
-  "sourceRoots": ["src", "packages", "nodes", "scripts"],
-  "sourceExtensions": [".js", ".svelte"],
+  "sourceRoots": ["src", "packages", "nodes", "scripts", "android"],
+  "sourceExtensions": [".js", ".mjs", ".svelte"],
   "entrypoints": [
     "src/main.js",
-    "nodes/relay/index.js",
-    "nodes/leaderboard/index.js",
-    "scripts/validate-records.js"
+    "nodes/relay/relay.mjs",
+    "nodes/leaderboard/leaderboard.mjs",
+    "scripts/validate-records.mjs",
+    "scripts/detect-version-bump.mjs",
+    "android/compute-version-code.mjs",
+    "android/generate-release-notes.mjs",
+    "android/sync-twa-version.mjs"
   ],
   "importAliases": {
     "@digifall/leaderboard": "packages/leaderboard/index.js"
@@ -43,6 +47,11 @@
       "name": "server-nodes",
       "rank": 3,
       "files": ["nodes/**", "scripts/**"]
+    },
+    {
+      "name": "release-automation",
+      "rank": 3,
+      "files": ["android/**", ".github/workflows/**"]
     }
   ],
   "forbiddenEdges": [
@@ -74,7 +83,7 @@
   "surfaceRules": [
     {
       "name": "large module pressure",
-      "files": ["src/*.js", "packages/**/*.js", "nodes/**/*.js"],
+      "files": ["src/*.js", "packages/**/*.js", "nodes/**/*.js", "scripts/*.mjs", "android/*.mjs"],
       "metric": "lines",
       "max": 800,
       "severity": "warn",

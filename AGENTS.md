@@ -47,9 +47,9 @@ Not a traditional game-as-product, but a protocol-as-game:
 - libp2p Node: Browser-based P2P networking with relay transport and floodsub
   - See: [initP2PLeaderboard()](src/leaderboard.js#L139-L210)
 - Relay Node: Server-side libp2p circuit relay + pubsub peer discovery
-  - See: [nodes/relay/index.js](nodes/relay/index.js), [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
+  - See: [nodes/relay/relay.mjs](nodes/relay/relay.mjs), [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
 - Leaderboard Node: Headless server-side leaderboard peer with persistent storage
-  - See: [nodes/leaderboard/index.js](nodes/leaderboard/index.js), [data.json](nodes/leaderboard/data.json)
+  - See: [nodes/leaderboard/leaderboard.mjs](nodes/leaderboard/leaderboard.mjs), [data.json](nodes/leaderboard/data.json)
 
 ## 3. Architectural Decisions
 
@@ -76,7 +76,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Plaintext Encryption: libp2p configured without encryption layer
   - Rationale: Validation layer makes encryption redundant—MITM cannot inject invalid records, only waste bandwidth. Defense-by-validation eliminates need for defense-by-encryption.
   - Trade-offs: No privacy (acceptable for public leaderboard), visible traffic (irrelevant since validation is sole trust boundary)
-  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay/index.js)
+  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay/relay.mjs)
 
 - Svelte 5 Runes: Modern reactive primitives ($state, $derived, $effect)
   - Rationale: Simplified reactivity compared to stores-only approach
@@ -113,16 +113,16 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - `/nodes/`: Server-side infrastructure (each node in own folder with colocated data)
   - `relay/`: Standalone libp2p circuit relay for NAT traversal
-    - `index.js`: Relay server implementation
+    - `relay.mjs`: Relay server implementation
     - `peerstore/`: Persistent peer identity (gitignored)
   - `leaderboard/`: Headless leaderboard node for bootstrapping peers
-    - `index.js`: Node implementation with replay validation for inbound and persisted records
+    - `leaderboard.mjs`: Node implementation with replay validation for inbound and persisted records
     - `data.json`: Persistent leaderboard storage (tracked in git for bootstrap/backup)
     - `peerstore/`: Persistent peer identity (gitignored)
 - `/scripts/`: Deployment and operations automation
   - `deploy-relay.sh`: One-command relay deployment with systemd + SSL + certbot renewal hooks
   - `undeploy-relay.sh`: Clean removal of relay services, certificates, and user
-  - `validate-records.js`: CLI validator for replay-checking leaderboard records from JSON files or stdin
+  - `validate-records.mjs`: CLI validator for replay-checking leaderboard records from JSON files or stdin
 - `/public/`: Static assets (fonts, images, sounds, manifest.json)
 - `/dist/`: Vite build output (generated)
 - `vite.config.js`: Build configuration with PWA plugin
@@ -162,7 +162,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Environment-First Configuration: Server nodes read `DIGIFALL_RELAYS` env var before falling back to hardcoded defaults
   - Rationale: Enables staging/prod separation, custom relay testing without code changes
-  - See: [parseRelaysFromEnv()](nodes/leaderboard/index.js#L28-L35)
+  - See: [parseRelaysFromEnv()](nodes/leaderboard/leaderboard.mjs#L28-L35)
 
 - Deployment Runtime Validation: Relay deployment must validate both Node.js and npm before installing app dependencies
   - Rationale: Distros can provide a usable `node` binary without `npm`; systemd units should use resolved absolute runtime paths
