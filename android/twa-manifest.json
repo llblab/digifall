@@ -1,0 +1,40 @@
+{
+  "packageId": "com.llblab.digifall",
+  "host": "digifall.app",
+  "name": "Digifall",
+  "launcherName": "Digifall",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#000000",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#000000",
+  "enableNotifications": false,
+  "enableSiteSettingsShortcut": true,
+  "fallbackType": "customtabs",
+  "startUrl": "/",
+  "webManifestUrl": "https://digifall.app/manifest.json",
+  "iconUrl": "https://digifall.app/images/icon-512x512.png",
+  "maskableIconUrl": "https://digifall.app/images/icon-512x512.png",
+  "monochromeIconUrl": "https://digifall.app/images/icon-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersion": "0.15.0",
+  "appVersionCode": 15000,
+  "signingKey": {
+    "path": ".secrets/LLBLab.keystore",
+    "alias": "LLBLab"
+  },
+  "fingerprints": [
+    {
+      "name": "published-assetlinks-fingerprint",
+      "value": "0B:70:FF:C1:47:6E:A9:4A:1A:CA:27:A7:9E:E6:4C:D1:EE:F9:6D:56:4A:28:99:55:6A:C7:01:72:01:6E:C3:AD"
+    }
+  ],
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "features": {}
+}

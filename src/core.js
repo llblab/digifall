@@ -154,13 +154,18 @@ export function checkRapid(game, value, timeout = 0) {
  * Plays a callback or array of callbacks depending on sound settings and phase.
  * @param {Game} game
  * @param {Function|Function[]|undefined} callback
- * @param {{ muteRapid?: boolean }} [options]
+ * @param {{ muteRapid?: boolean, ignoreReady?: boolean }} [options]
  */
-export function checkSound(game, callback, { muteRapid = false } = {}) {
+export function checkSound(
+  game,
+  callback,
+  { muteRapid = false, ignoreReady = false } = {},
+) {
   if (!callback) return;
   const { sound, rapid } = game.optionsStore.get();
   if (muteRapid && rapid) return;
-  if (!sound || game.movesInitial !== null || !game.ready) return;
+  if (!sound || game.movesInitial !== null || (!ignoreReady && !game.ready))
+    return;
   if (Array.isArray(callback)) {
     callback.forEach((cb) => cb && cb());
     return;
@@ -401,6 +406,7 @@ function doEnergyLogic(game, { buffer, value }) {
  * @param {Game} game
  */
 function doInitialPhase(game) {
+  if (game.ready === false) return;
   setTimeout(() => game.phaseStore.set(PHASES.idle), 0);
 }
 
@@ -875,7 +881,11 @@ export function initCore(game, sounds) {
  * @param {string} [playerName]
  */
 function shuffleBoard(game, count, playerName) {
-  if (count < 0) return (game.ready = true);
+  if (count < 0) {
+    game.ready = true;
+    game.phaseStore.set(PHASES.idle);
+    return;
+  }
   setTimeout(() => {
     game.logStore.set(INITIAL_VALUES.log);
     game.plusIndexStore.set(INITIAL_VALUES.plusIndex);
@@ -898,7 +908,9 @@ function shuffleBoard(game, count, playerName) {
  */
 export function resetGame(game, playerName) {
   updatePreviousHighs(game);
-  checkSound(game, game.sounds.playGenerate);
+  game.movesInitial = null;
+  game.moveCount = 0;
+  checkSound(game, game.sounds.playGenerate, { ignoreReady: true });
   game.ready = false;
   shuffleBoard(game, 8, playerName);
 }

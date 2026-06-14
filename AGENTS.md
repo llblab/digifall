@@ -47,9 +47,9 @@ Not a traditional game-as-product, but a protocol-as-game:
 - libp2p Node: Browser-based P2P networking with relay transport and floodsub
   - See: [initP2PLeaderboard()](src/leaderboard.js#L139-L210)
 - Relay Node: Server-side libp2p circuit relay + pubsub peer discovery
-  - See: [nodes/relay/index.js](nodes/relay/index.js), [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
+  - See: [nodes/relay/relay.mjs](nodes/relay/relay.mjs), [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
 - Leaderboard Node: Headless server-side leaderboard peer with persistent storage
-  - See: [nodes/leaderboard/index.js](nodes/leaderboard/index.js), [data.json](nodes/leaderboard/data.json)
+  - See: [nodes/leaderboard/leaderboard.mjs](nodes/leaderboard/leaderboard.mjs), [data.json](nodes/leaderboard/data.json)
 
 ## 3. Architectural Decisions
 
@@ -76,7 +76,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Plaintext Encryption: libp2p configured without encryption layer
   - Rationale: Validation layer makes encryption redundant—MITM cannot inject invalid records, only waste bandwidth. Defense-by-validation eliminates need for defense-by-encryption.
   - Trade-offs: No privacy (acceptable for public leaderboard), visible traffic (irrelevant since validation is sole trust boundary)
-  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay/index.js)
+  - See: [plaintext() config](src/leaderboard.js#L270), [relay config](nodes/relay/relay.mjs)
 
 - Svelte 5 Runes: Modern reactive primitives ($state, $derived, $effect)
   - Rationale: Simplified reactivity compared to stores-only approach
@@ -113,16 +113,16 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - `/nodes/`: Server-side infrastructure (each node in own folder with colocated data)
   - `relay/`: Standalone libp2p circuit relay for NAT traversal
-    - `index.js`: Relay server implementation
+    - `relay.mjs`: Relay server implementation
     - `peerstore/`: Persistent peer identity (gitignored)
   - `leaderboard/`: Headless leaderboard node for bootstrapping peers
-    - `index.js`: Node implementation with replay validation for inbound and persisted records
+    - `leaderboard.mjs`: Node implementation with replay validation for inbound and persisted records
     - `data.json`: Persistent leaderboard storage (tracked in git for bootstrap/backup)
     - `peerstore/`: Persistent peer identity (gitignored)
 - `/scripts/`: Deployment and operations automation
   - `deploy-relay.sh`: One-command relay deployment with systemd + SSL + certbot renewal hooks
   - `undeploy-relay.sh`: Clean removal of relay services, certificates, and user
-  - `validate-records.js`: CLI validator for replay-checking leaderboard records from JSON files or stdin
+  - `validate-records.mjs`: CLI validator for replay-checking leaderboard records from JSON files or stdin
 - `/public/`: Static assets (fonts, images, sounds, manifest.json)
 - `/dist/`: Vite build output (generated)
 - `vite.config.js`: Build configuration with PWA plugin
@@ -146,6 +146,11 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Note: Game difficulty makes 1000+ move records practically unreachable before energy depletion
   - See: [createRecordValidator() timeout](src/validation.js)
 
+- Replay-Compatible State Gates: Core phase/reset guards must not assume UI-only fields exist in validation runtimes
+  - Rationale: `createRecordValidator()` constructs a minimal replay game object; broad falsy checks like `!game.ready` can freeze `initial → idle` and reject or hang valid records
+  - Pattern: Check explicit UI gate states (`game.ready === false`) when absence should mean “not applicable”; run `timeout 10s npm run validate-records -- nodes/leaderboard/data.json` after core phase/reset/replay changes
+  - See: [createRecordValidator()](src/validation.js), [doInitialPhase()](src/core.js)
+
 ### Infrastructure (Node Operations)
 
 - Idempotent Deployment: Relay setup must be single-command, creating systemd services and SSL certs automatically
@@ -162,7 +167,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Environment-First Configuration: Server nodes read `DIGIFALL_RELAYS` env var before falling back to hardcoded defaults
   - Rationale: Enables staging/prod separation, custom relay testing without code changes
-  - See: [parseRelaysFromEnv()](nodes/leaderboard/index.js#L28-L35)
+  - See: [parseRelaysFromEnv()](nodes/leaderboard/leaderboard.mjs#L28-L35)
 
 - Deployment Runtime Validation: Relay deployment must validate both Node.js and npm before installing app dependencies
   - Rationale: Distros can provide a usable `node` binary without `npm`; systemd units should use resolved absolute runtime paths
@@ -177,6 +182,16 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution
   - Trade-off: Manual commits required to update backup (acceptable for low-frequency changes)
   - Constraint: Bootstrap data must pass `npm run validate-records -- nodes/leaderboard/data.json` before commit
+
+- Release Note Ordering: Version sections in `CHANGELOG.md` must list the most player-visible and user-important changes first, then operational/CI/internal details
+  - Rationale: Android release notes are generated from the current changelog section; Google Play truncates `whatsnew-*` text to 500 Unicode characters, so the first bullets become the public store copy
+  - Pattern: Start with gameplay, compatibility, platform availability, fixes, and user-facing behavior; put build automation, docs, safety, and refactors later
+  - See: [Release flow notes](docs/release-flow.md#release-notes)
+
+- Release Workflow Idempotence: Published version rewrites must not re-upload the same Android versionCode
+  - Rationale: Google Play rejects replacing an already published APK; release-commit amend/force-push workflows must detect `vX.Y.Z` already pointing at `HEAD` and skip publish unless manually forced
+  - Pattern: Keep version-bump detection, tag guards, and full workflow `run-name` labels consistent across `.github/workflows/*`
+  - See: [Release flow lever](docs/release-flow.md#release-lever)
 
 ### Recommended (Performance and maintainability)
 

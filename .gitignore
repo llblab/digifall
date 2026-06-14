@@ -3,3 +3,12 @@
 dist
 node_modules
 nodes/*/peerstore
+.secrets/
+*.keystore
+*.jks
+*.p12
+*.apk
+*.aab
+android/app-release-bundle.aab
+android/app-release-signed.apk
+service-account*.json

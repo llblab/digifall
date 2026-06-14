@@ -32,6 +32,8 @@ function createGame({
   phase = PHASES.idle,
   rapid = true,
   seed,
+  sound = false,
+  sounds,
 } = {}) {
   const playerName = "tester";
   const timestamp = 1700000000000;
@@ -44,7 +46,7 @@ function createGame({
     ),
     movesStore: withGet(writable(moves)),
     optionsStore: withGet(
-      writable({ playerName, cluster: false, rapid, sound: false }),
+      writable({ playerName, cluster: false, rapid, sound }),
     ),
     phaseStore: withGet(writable(phase)),
     plusIndexStore: withGet(writable(INITIAL_VALUES.plusIndex)),
@@ -54,7 +56,7 @@ function createGame({
     timestampStore: withGet(writable(timestamp)),
     ready: true,
   };
-  return initCore(game);
+  return initCore(game, sounds);
 }
 
 async function waitUntil(predicate, timeout = 1000) {
@@ -110,4 +112,29 @@ test("reset keeps game not ready until shuffle completes", async () => {
   resetGame(game, "tester");
   assert.equal(game.ready, false);
   await waitUntil(() => game.ready === true, 1000);
+});
+
+test("reset plays generate sound even when game is not ready", () => {
+  let generated = 0;
+  const game = createGame({
+    sound: true,
+    sounds: { playGenerate: () => generated++ },
+  });
+  game.ready = false;
+  resetGame(game, "tester");
+  assert.equal(generated, 1);
+});
+
+test("reset cancels restored replay before playing generate sound", () => {
+  let generated = 0;
+  const game = createGame({
+    sound: true,
+    sounds: { playGenerate: () => generated++ },
+  });
+  game.movesInitial = [0];
+  game.moveCount = 1;
+  resetGame(game, "tester");
+  assert.equal(game.movesInitial, null);
+  assert.equal(game.moveCount, 0);
+  assert.equal(generated, 1);
 });
