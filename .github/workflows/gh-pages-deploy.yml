@@ -1,3 +1,6 @@
+name: GitHub Pages Deploy
+run-name: Digifall / GitHub Pages / ${{ github.ref_name }} / ${{ github.event_name }}
+
 on:
   push:
     branches:

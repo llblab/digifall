@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0 Android Play Release Pipeline
+
+- `Android`: Added a Bubblewrap Trusted Web Activity configuration for package `com.llblab.digifall`, version-synced from `package.json`, so Digifall can ship to Google Play as a hosted PWA wrapper
+- `CI`: Added pull request validation and an idempotent Android release workflow that detects package version bumps, creates or updates GitHub Releases, builds signed Android App Bundles, and can upload to Google Play
+- `Release Automation`: Added Android version-code, version-bump detection, TWA version sync, and release-notes generation scripts with manual dispatch support for the first internal catch-up release
+- `Documentation`: Added Android/Google Play release documentation covering required secrets, Play Console setup, manual dry run/internal publish commands, asset links verification, and device checks
+- `Safety`: Expanded ignore rules for keystores, service account files, signed APKs/AABs, and local secret material so release credentials and artifacts stay out of git
+- `Node Entrypoints`: Renamed server node entry files to explicit `.mjs` names (`relay.mjs`, `leaderboard.mjs`, `validate-records.mjs`) while keeping npm scripts as the operational interface
+
 ## 0.14.5 iOS Energy Reliability
 
 - `Reliability`: Startup replay now marks the game as not ready while persisted moves are being rehydrated, preventing iOS rapid-mode touches from being ignored during the restore window instead of being mistaken for valid moves

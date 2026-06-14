@@ -1,0 +1,231 @@
+name: Android Play Release
+run-name: Digifall / Android Play / ${{ github.ref_name }} / ${{ github.event_name }}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: Publish current package.json version even without a version bump
+        type: boolean
+        default: false
+      play_track:
+        description: Google Play track
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+        default: internal
+      release_status:
+        description: Google Play release status
+        type: choice
+        options:
+          - completed
+          - draft
+          - inProgress
+        default: completed
+      dry_run:
+        description: Build signed Android artifacts but skip Google Play upload
+        type: boolean
+        default: false
+
+concurrency:
+  group: digifall-android-play-release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      previous_version: ${{ steps.bump.outputs.previous_version }}
+      version_increased: ${{ steps.bump.outputs.version_increased }}
+      publish_needed: ${{ steps.publish.outputs.publish_needed }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - id: bump
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          FORCE_PUBLISH: ${{ inputs.force_publish || 'false' }}
+        run: node scripts/detect-version-bump.mjs
+      - id: version
+        run: node android/compute-version-code.mjs
+      - id: publish
+        env:
+          FORCE_PUBLISH: ${{ inputs.force_publish || 'false' }}
+          BUMP_PUBLISH_NEEDED: ${{ steps.bump.outputs.publish_needed }}
+          IS_PRERELEASE: ${{ steps.version.outputs.is_prerelease }}
+        run: |
+          publish_needed=false
+          if [ "$FORCE_PUBLISH" = "true" ]; then
+            publish_needed=true
+          elif [ "$BUMP_PUBLISH_NEEDED" = "true" ] && [ "$IS_PRERELEASE" != "true" ]; then
+            publish_needed=true
+          fi
+          echo "publish_needed=$publish_needed" >> "$GITHUB_OUTPUT"
+          echo "publish_needed=$publish_needed"
+
+  web-build:
+    runs-on: ubuntu-latest
+    needs: meta
+    if: needs.meta.outputs.publish_needed == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  release-notes:
+    runs-on: ubuntu-latest
+    needs: meta
+    if: needs.meta.outputs.publish_needed == 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: node android/generate-release-notes.mjs
+        env:
+          RELEASE_NOTES_LOCALES: ${{ vars.RELEASE_NOTES_LOCALES || 'en-US' }}
+      - uses: actions/upload-artifact@v6
+        with:
+          name: release-notes
+          path: |
+            dist/release-notes.md
+            dist/google-play/whatsnew/**
+          retention-days: 7
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs:
+      - meta
+      - web-build
+      - release-notes
+    if: github.event_name == 'push' && needs.meta.outputs.publish_needed == 'true'
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v6
+        with:
+          name: release-notes
+          path: dist
+      - run: |
+          tag="v$VERSION"
+          git fetch --tags origin
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            tag_commit="$(git rev-list -n 1 "$tag")"
+            head_commit="$(git rev-parse HEAD)"
+            if [ "$tag_commit" != "$head_commit" ]; then
+              echo "Tag $tag points to $tag_commit, not current HEAD $head_commit" >&2
+              exit 1
+            fi
+          else
+            git tag "$tag"
+            git push origin "$tag"
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "$tag" --notes-file dist/release-notes.md
+          else
+            gh release create "$tag" --title "$tag" --notes-file dist/release-notes.md
+          fi
+
+  android-build-publish:
+    runs-on: ubuntu-latest
+    needs:
+      - meta
+      - web-build
+      - release-notes
+    if: needs.meta.outputs.publish_needed == 'true'
+    env:
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      PLAY_TRACK: ${{ inputs.play_track || vars.GOOGLE_PLAY_TRACK || 'internal' }}
+      RELEASE_STATUS: ${{ inputs.release_status || 'completed' }}
+      ANDROID_PACKAGE_NAME: ${{ vars.ANDROID_PACKAGE_NAME || 'com.llblab.digifall' }}
+      BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v4
+      - uses: actions/download-artifact@v6
+        with:
+          name: release-notes
+          path: dist
+      - run: npm ci
+      - run: npm install --no-save @bubblewrap/cli@1.24.1
+      - run: |
+          test -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
+          test -n "$BUBBLEWRAP_KEYSTORE_PASSWORD"
+          test -n "$BUBBLEWRAP_KEY_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          if [ "$DRY_RUN" != "true" ]; then
+            test -n '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}'
+          fi
+      - run: |
+          mkdir -p .secrets
+          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 -d > .secrets/LLBLab.keystore
+          chmod 600 .secrets/LLBLab.keystore
+      - run: node android/sync-twa-version.mjs
+      - run: |
+          mkdir -p "$HOME/.bubblewrap"
+          node -e 'require("fs").writeFileSync(process.env.HOME + "/.bubblewrap/config.json", JSON.stringify({ jdkPath: process.env.JAVA_HOME, androidSdkPath: process.env.ANDROID_HOME }))'
+      - run: ../node_modules/.bin/bubblewrap update --skipVersionUpgrade
+        working-directory: android
+      - run: |
+          ../node_modules/.bin/bubblewrap build \
+            --signingKeyPath="../.secrets/LLBLab.keystore" \
+            --signingKeyAlias="$ANDROID_KEY_ALIAS"
+          test -f app-release-bundle.aab
+        working-directory: android
+      - uses: actions/upload-artifact@v6
+        with:
+          name: android-release-${{ needs.meta.outputs.version }}
+          path: |
+            android/app-release-bundle.aab
+            android/app-release-signed.apk
+          retention-days: 7
+      - if: env.DRY_RUN != 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.ANDROID_PACKAGE_NAME }}
+          releaseFiles: android/app-release-signed.apk
+          track: ${{ env.PLAY_TRACK }}
+          status: ${{ env.RELEASE_STATUS }}
+          releaseName: v${{ needs.meta.outputs.version }}
+          whatsNewDirectory: dist/google-play/whatsnew
