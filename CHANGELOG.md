@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.14.5 iOS Energy Reliability
+
+- `Reliability`: Startup replay now marks the game as not ready while persisted moves are being rehydrated, preventing iOS rapid-mode touches from being ignored during the restore window instead of being mistaken for valid moves
+- `Reliability`: Rapid-mode user moves now debit energy directly in the move transaction, matching replay behavior and avoiding dependence on the energy-buffer drain subscriber
+- `Input`: Board long-press actions now check both game readiness and phase progress before committing a plus action, hardening startup/reset races
+- `Input`: Rapid-mode touch starts now commit a card move immediately, restoring tap-to-plus behavior on touch devices while preserving long-press protection for normal mode
+- `Developer Experience`: Added core state-machine regression tests covering rapid and animated energy debit, replay readiness, ignored live input during replay, and reset readiness
+- `Dependencies`: Refreshed Svelte, Vite, Stylelint, Prettier, libp2p, and related lockfile dependencies for the 0.14.5 release
+- `Build`: Removed the deprecated Vite dependency optimization override; Vite 8 now builds cleanly without the old `esbuildOptions` setting
+
 ## 0.14.4 Architecture Guardrails
 
 - `Architecture`: Added project-local Domain DAG validation config and vendored the Domain DAG skill under `.agents/skills/domain-dag`, covering browser source, shared leaderboard package, server nodes, scripts, layer direction, and core boundary rules

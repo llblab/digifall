@@ -108,6 +108,7 @@
   }
 
   export function plusFocusedCard() {
+    if (!game.ready || progress) return;
     if (!isFocused()) return;
     focusedCardPrev = null;
     const index = $cardsStore.findIndex(
@@ -192,16 +193,18 @@
   }
 
   function longpressStart(event) {
-    if (progress) return;
+    if (!game.ready || progress) return;
     const index = findCardIndex(event.detail);
     if (index === null) return;
     hoverCard(index);
-    if (!rapid) longpressedIndex = index;
-    if (event.detail.type !== "mousedown") return;
-    checkSound(() => playHit($cardsStore[index].value), {
-      onlyOnIdle: true,
-    });
-    if (rapid) plusFocusedCard();
+    if (rapid) {
+      checkSound(() => playHit($cardsStore[index].value), {
+        onlyOnIdle: true,
+      });
+      plusFocusedCard();
+      return;
+    }
+    longpressedIndex = index;
   }
 
   function longpressFire(event) {

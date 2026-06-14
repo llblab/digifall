@@ -420,6 +420,7 @@ function doIdlePhase(game) {
       return;
     }
     game.movesInitial = null;
+    game.ready = true;
     checkLocalScore(game, KEYS.highScore, game.scoreStore.get().value);
     return;
   }
@@ -638,7 +639,10 @@ function doPlusIndexLogic(game, plusIndex) {
   moves = Array.isArray(moves) ? moves : getArrayFromBase64(moves);
   moves.push(plusIndex);
   game.movesStore.set(getBase64FromArray(moves));
-  game.energyStore.update((energy) => ({ ...energy, buffer: -10 }));
+  game.energyStore.update(({ buffer, value }) => {
+    if (game.optionsStore.get().rapid) return { buffer, value: value - 10 };
+    return { buffer: -10, value };
+  });
   checkRapid(game, () => game.phaseStore.set(PHASES.plus), 400);
 }
 
@@ -812,6 +816,7 @@ function doSeedLogic(game, seed) {
   if (!moves) return;
   moves = Array.isArray(moves) ? moves : getArrayFromBase64(moves);
   if (moves.length > 0) {
+    game.ready = false;
     game.moveCount = 0;
     game.movesInitial = moves;
     return;

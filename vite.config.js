@@ -9,13 +9,6 @@ export default defineConfig({
     target: "esnext",
     chunkSizeWarningLimit: 1337,
   },
-  optimizeDeps: {
-    esbuildOptions: {
-      supported: {
-        bigint: true,
-      },
-    },
-  },
   plugins: [
     svelte(),
     VitePWA({
