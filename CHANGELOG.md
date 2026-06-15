@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+## 0.15.1 Leaderboard Hotfix
+
+- `Leaderboard Reliability`: Local personal bests are now replay-validated and synced into the IndexedDB-backed leaderboard regardless of the current game phase, so high-combo records saved during combo resolution are not stranded in localStorage
+
 ## 0.15.0 Android Play Release Pipeline
 
 - `Android`: Added a Bubblewrap Trusted Web Activity configuration for package `com.llblab.digifall`, version-synced from `package.json`, so Digifall can ship to Google Play as a hosted PWA wrapper
