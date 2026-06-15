@@ -247,6 +247,10 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: Mobile Safari can throw on storage reads/writes; gameplay must continue because local persistence is not part of deterministic validation
   - Pattern: Catch storage failures at persistence boundaries, keep reactive store updates synchronous, and reuse safe JSON loaders for custom migrations
 
+- Personal-Best Leaderboard Sync: localStorage personal records must be replay-validated and queued into the IndexedDB leaderboard without phase gating
+  - Rationale: highCombo is saved during combo resolution; idle/gameOver-only sync can strand a valid local best until the user beats it again
+  - Pattern: Add record type on a copy, call `LeaderboardCore.handleRecordWithValidation()`, then persist updated leaderboard snapshots
+
 ### Shared Package Principles
 
 - Protocol vs Infrastructure Separation: Shared packages contain protocol logic (message formats, handlers); platform-specific code (libp2p config, storage backends) stays in consumers

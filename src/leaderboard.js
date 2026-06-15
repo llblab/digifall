@@ -17,12 +17,11 @@ import { multiaddr } from "@multiformats/multiaddr";
 import { IDBDatastore } from "datastore-idb";
 import { createLibp2p } from "libp2p";
 
-import { DEBUG, KEYS, MAX_RECORDS, PHASES, RECORD_TYPES } from "./constants.js";
+import { DEBUG, KEYS, MAX_RECORDS, RECORD_TYPES } from "./constants.js";
 import { createIndexedDBFactory } from "./persistence.js";
 import {
   activeRelaysStore,
   optionsStore,
-  phaseStore,
   recordsStore,
   relayPeerIdsStore,
 } from "./stores.js";
@@ -242,15 +241,17 @@ RECORD_TYPES.forEach((type) => {
 });
 
 recordsStore.subscribe((records) => {
-  const phase = phaseStore.get();
-  if (phase !== PHASES.idle && phase !== PHASES.gameOver) return;
-  RECORD_TYPES.forEach((type) => {
-    const record = records[type];
-    if (record[KEYS.value] === 0) return;
-    record[KEYS.type] = type;
-    core.handleRecord(record);
-    leaderboardStores[type].set(core.getData(type));
-  });
+  Promise.allSettled(
+    RECORD_TYPES.map(async (type) => {
+      const record = records[type];
+      if (record[KEYS.value] === 0) return;
+      const updated = await core.handleRecordWithValidation({
+        ...record,
+        [KEYS.type]: type,
+      });
+      if (updated) leaderboardStores[type].set(core.getData(type));
+    }),
+  );
 });
 
 let relaysInitialized = false;

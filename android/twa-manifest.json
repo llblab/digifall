@@ -21,8 +21,8 @@
   "maskableIconUrl": "https://digifall.app/images/icon-512x512.png",
   "monochromeIconUrl": "https://digifall.app/images/icon-512x512.png",
   "splashScreenFadeOutDuration": 300,
-  "appVersion": "0.15.0",
-  "appVersionCode": 15000,
+  "appVersion": "0.15.1",
+  "appVersionCode": 15001,
   "signingKey": {
     "path": ".secrets/LLBLab.keystore",
     "alias": "LLBLab"
