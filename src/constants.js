@@ -16,6 +16,11 @@ export const MAX_RECORDS = 1e3;
 
 export const MAX_MOVES_LENGTH = 4e4;
 
+export const BACKENDS = Object.freeze({
+  chain: "chain",
+  classic: "classic",
+});
+
 export const CORE = Object.freeze({
   columns: 6,
   rows: 6,
@@ -80,6 +85,7 @@ export const INITIAL_VALUES = Object.freeze({
   matchedIndexes: new Set(),
   [KEYS.moves]: "",
   [KEYS.options]: {
+    backend: BACKENDS.classic,
     [KEYS.playerName]: "",
     [KEYS.leaderboard]: true,
     cluster: true,

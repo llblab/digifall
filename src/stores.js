@@ -1,7 +1,7 @@
 import { DEFAULT_RELAYS } from "@digifall/leaderboard";
 import { derived, get, writable } from "svelte/store";
 
-import { INITIAL_VALUES, KEYS } from "./constants.js";
+import { BACKENDS, INITIAL_VALUES, KEYS } from "./constants.js";
 import {
   checkRapid as coreCheckRapid,
   checkSound as coreCheckSound,
@@ -31,6 +31,14 @@ export function createDerivedStore(stores = [], callbacks = () => {}) {
 }
 
 export const cardsStore = createStore(INITIAL_VALUES.cards);
+
+export const backendStatusStore = createStore({
+  kind: BACKENDS.classic,
+  message: "",
+  state: "ready",
+});
+
+export const interactionStore = createStore(true);
 
 export const energyStore = createStore(INITIAL_VALUES.energy);
 

@@ -3,6 +3,7 @@
 
   import Card from "./Card.svelte";
 
+  import { gameController } from "./backends/controller.js";
   import { CORE, PHASES } from "./constants.js";
   import { getFieldFromCards } from "./core.js";
   import {
@@ -115,7 +116,7 @@
       ({ x, y }) => x === focusedCard.x && y === focusedCard.y,
     );
     if (index === -1) return;
-    $plusIndexStore = index;
+    gameController.selectCard(index);
     if (progress) return;
     checkSound(playPlus, { muteRapid: true });
   }

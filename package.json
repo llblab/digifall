@@ -20,7 +20,7 @@
     "relay": "node nodes/relay/relay.mjs",
     "leaderboard": "node nodes/leaderboard/leaderboard.mjs",
     "validate-records": "node scripts/validate-records.mjs",
-    "test": "node --test src/*.test.js android/*.test.mjs && npm test --workspaces",
+    "test": "node --test src/*.test.js src/backends/*.test.js src/backends/chain/*.test.js android/*.test.mjs && npm test --workspaces",
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "lint": "stylelint 'src/**/*.{css,svelte}' '*.html' 'public/**/*.html' --fix",
     "format": "prettier --write ."
