@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `Chain Projection Hardening`: Chain snapshots now fail closed before touching shared stores when lifecycle, identity, board shape/coordinates/values, or safe JavaScript display ranges are invalid; move intents also reject indexes outside the fixed board
+- `Backend View Projection`: Chain game snapshots now normalize into the existing card/energy/score/phase stores, while switching away from classic captures and restores its visual state instead of letting authoritative chain projection overwrite the local run
+- `Chain Adapter Foundation`: Replaced the placeholder with a tested fail-closed adapter lifecycle that projects authoritative ready state, binds submissions to game ID/revision/card, rejects concurrent moves, disconnects resources, and ignores stopped generations
+- `Client Backend Foundation`: Added the persisted classic/chain selector, controller-routed card actions, classic adapter, generation-safe backend lifecycle, shared status/interaction stores, and lazy fail-closed chain adapter seam without changing classic gameplay
+- `On-chain Client Design`: Specified a `classic | chain` backend switch inside the existing Svelte client, reusing its board/styles/sounds/effects while lazy-loading Polkadot API, generated runtime descriptors, wallet/RPC lifecycle, finalized chain projection, and deterministic visual replay
+- `On-chain Safety & Performance`: Defined separate exact-epoch sampling and fair bounded-resolution budgets, compact client-replay events, state/custody/upgrade invariants, adversarial validation, Wasm benchmark gates, and operational saturation signals without changing game rules
+- `On-chain v2 Design`: Corrected the target to preserve Digifall rules exactly while changing the blockchain lifecycle: commit a card move, sample its bound later-block entropy, resolve the full refill/cascade transition with bounded scheduling, and drive the client from inclusion and finalized state
+- `On-chain Review`: Completed a findings-first readiness assessment, confirming a foreign-consumer refund liveness defect, repeated fee-free retry exposure after failed settlement, and duplicate fee-predicate weight undercharging; economic activation remains blocked pending remediation and regression coverage
 - `On-chain Protocol`: Added an experimental standalone `no_std` FRAME pallet with a fixed-size deterministic 6×6 engine, bounded resumable transitions, one current game per owner, stake custody, delegated session control, and stake/score reward minting
 - `On-chain Fairness`: Bound each commitment to one bounded scheduled post-commit randomness sample, with owner refunds when the configured source cannot provide fresh entropy
 - `On-chain Safety`: Added transactional fault refunds, consumer-safe sufficient references for unfunded session accounts, game-ID/revision replay guards, configurable limits, and separate stake/reward fungible adapters

@@ -50,26 +50,36 @@ Not a traditional game-as-product, but a protocol-as-game:
   - See: [nodes/relay/relay.mjs](nodes/relay/relay.mjs), [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
 - Leaderboard Node: Headless server-side leaderboard peer with persistent storage
   - See: [nodes/leaderboard/leaderboard.mjs](nodes/leaderboard/leaderboard.mjs), [data.json](nodes/leaderboard/data.json)
-- On-chain Game: Bounded owner-keyed FRAME state containing one pending or active board, stake, delegated session, revision, and terminal summary without move history
-  - See: [pallet-digifall](chain/pallets/digifall/src/lib.rs), [protocol contract](docs/on-chain-pallet.md)
-- Scheduled Reveal: Bounded per-block commitment queue that samples post-commit runtime randomness exactly once before later activation
-  - See: [ScheduledReveals](chain/pallets/digifall/src/lib.rs)
+- On-chain Game v2: Target lifecycle with one owner-keyed board, revision, optional session, economics, and at most one pending card move; it preserves Digifall gameplay rules while binding each initialization/move to later-block entropy
+  - See: [v2 protocol and client contract](docs/on-chain-game-v2.md)
+- Scheduled Move: Bounded queue entry binding one public card choice and pre-state hash to exactly one later-block entropy sample; resolution preserves refill and recursive cascades and may be operationally chunked without new randomness
+  - See: [v2 lifecycle](docs/on-chain-game-v2.md#lifecycle)
+- On-chain Work Scheduler: Separate bounded sampling and round-robin resolution queues with explicit per-block/per-action budgets; one long or corrupt game cannot monopolize hooks or change its fixed entropy epoch
+  - See: [safety and performance contract](docs/on-chain-safety-performance.md)
+- Game Backend: Client-side capability contract selecting `classic` local execution or authoritative `chain` execution while projecting both into the existing board/energy/score/log/phase stores and visual components
+  - Current foundation: generation-safe `GameController`, classic adapter, lazy fail-closed chain seam, persisted selector, and normalized status/interaction stores
+  - See: [backend implementation](src/backends/controller.js), [classic client backend architecture](docs/game-backends.md)
+- Chain Adapter: Lazy-loaded Polkadot API boundary owning typed runtime descriptors, RPC/provider lifecycle, wallet signing, finalized subscriptions, and chain-to-view projection; Svelte components never import chain infrastructure directly
+  - Current foundation: injected adapter lifecycle, fail-closed startup, structurally validated authoritative snapshots, safe-integer projection, normalized board/energy/score/phase stores, classic view snapshot/restore, bounded card/revision/game-bound move submission, single in-flight admission, disconnect cleanup, and stale-generation suppression are implemented and unit-tested; concrete Polkadot API descriptors remain pending
+  - See: [Polkadot API integration](docs/game-backends.md#polkadot-api-integration)
+- On-chain v1 Prototype: Checked-in FRAME research implementation preserving browser mechanics; useful for determinism/runtime experiments but superseded as the product protocol
+  - See: [v1 implementation contract](docs/on-chain-pallet.md), [review](docs/on-chain-review.md)
 
 ## 3. Architectural Decisions
 
 ### Critical (Core invariants - changes require architectural review)
 
-- Deterministic Core Logic: All game mechanics use seeded PRNG for reproducibility; browser records replay from moves, while FRAME stores bounded current state and uses integer-only transitions
-  - Rationale: The browser can validate records without trust and the chain can reach consensus without host-dependent behavior
+- Shared Rule Semantics, Separate Execution: Browser records replay seeded web games, while on-chain v2 stores authoritative bounded state and supplies a fixed later-block entropy stream per action; the Rust engine must preserve board, move, match, fall/refill, cascade, combo, energy, scoring, and terminal semantics for the same rule version
+  - Rationale: Block timing changes how randomness is committed and work is scheduled, not what Digifall's rules mean
   - See: [browser core](src/core.js), [Rust engine](chain/pallets/digifall/src/engine.rs)
 - Validation Through Replay: Browser records are validated by re-executing the same seed and moves under a 3-second DoS timeout
   - See: [validateRecord](src/validation.js)
 - P2P Leaderboard: Floodsub provides eventual consistency without consensus, trading global ordering for zero-authority operation and requiring relay infrastructure
   - Note: Floodsub is temporary—gossipsub may return when stable for libp2p v3
   - See: [leaderboard.js](src/leaderboard.js)
-- Fixed On-chain Randomness: FRAME commitments must be bound to one bounded, scheduled post-commit sample; activation may consume a stored seed but never choose among later epochs
-  - Rationale: Freshness alone does not prevent timing-based outcome selection
-  - See: [on-chain lifecycle](docs/on-chain-pallet.md#lifecycle)
+- Fixed On-chain Randomness: Each accepted v2 initialization or move fixes its action and target entropy epoch before randomness exists; resolution samples that epoch exactly once, expands a deterministic action stream for replacements/cascades, and never chooses among later outputs
+  - Rationale: Freshness alone does not prevent timing-based outcome selection; a prototype may use the next block, but production delay follows the selected provider's security contract
+  - See: [v2 entropy binding](docs/on-chain-game-v2.md#entropy-binding)
 
 ### Tactical (Implementation details - can evolve with justification)
 
@@ -79,10 +89,13 @@ Not a traditional game-as-product, but a protocol-as-game:
 - Single Browser Core File: Concentrating replay logic in `core.js` simplifies validation but trades away modularity
 - Atomic Relay State: `{ active, applied }` enables idempotent default migration while preserving custom relays without persisting migration-only loads
   - See: [loadRelays()](src/stores.js), [relaysStore](src/stores.js)
+- Shared Client, Swappable Backend: Classic and chain modes reuse the current visual tree and animation language; a composition-root controller owns backend activation, generation-based cancellation, and normalized stores, while chain dependencies load only when selected
+  - See: [backend boundary](docs/game-backends.md#boundary-to-introduce), [backend switching](docs/game-backends.md#backend-switch-behavior)
 
 ## 4. Project Structure
 
 - `/src/`: Application source code
+  - `backends/`: Swappable game authority boundary; controller and classic adapter are active, while `chain/` is a lazy fail-closed seam pending Polkadot API descriptors/runtime
   - `core.js`: Pure deterministic game logic and phase state machine (~900 LOC)
   - `stores.js`: Svelte reactive state containers with .get() extension, relay state management
   - `leaderboard.js`: P2P sync protocol (root hash exchange, preview diffing)
@@ -135,9 +148,12 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Rationale: `createRecordValidator()` constructs a minimal replay game object; broad falsy checks like `!game.ready` can freeze `initial → idle` and reject or hang valid records
   - Pattern: Check explicit UI gate states (`game.ready === false`) when absence should mean “not applicable”; run `timeout 10s npm run validate-records -- nodes/leaderboard/data.json` after core phase/reset/replay changes
   - See: [createRecordValidator()](src/validation.js), [doInitialPhase()](src/core.js)
-- On-chain Boundedness: FRAME game state and queues must be statically bounded, transitions resumable by explicit step budgets, and all fallible custody paths transactional
-  - Pattern: Keep randomness sampling in a bounded scheduled hook, activation seed-only, session liveness on a sufficient reference, and generate benchmark weights before economic activation
-  - See: [on-chain protocol](docs/on-chain-pallet.md)
+- On-chain Boundedness Without Rule Changes: FRAME state and queues must be static; scheduled hooks have explicit work bounds, while operational chunking preserves the full cascade result using one stored entropy stream and deterministic cursor
+  - Pattern: Never remove refill/cascades or alter matching to satisfy a weight target; sample once at the scheduled epoch, continue without fresh entropy when needed, and generate benchmark weights before economic activation
+  - See: [v2 bounded execution](docs/on-chain-game-v2.md#preserving-the-rules-with-bounded-execution)
+- On-chain Fault Isolation and Recovery: Queue admission reserves bounded capacity, hooks isolate corrupt games instead of panicking, custody keeps provider funding separate from refundable escrow, and recovery is idempotent across failures and upgrades
+  - Pattern: Test queue saturation, scheduler fairness, chunk equivalence, stale entries, foreign consumers, reward failure, and in-flight migrations before economic activation
+  - See: [security model](docs/on-chain-safety-performance.md#security-model), [required validation](docs/on-chain-safety-performance.md#required-validation)
 - Sponsored Session Transactions: Every progress call binds owner, game ID, revision, and work bound; fee-free runtime composition replaces standard `CheckNonce` with the strict-current nonce wrapper and wraps transaction payment with `SkipCheckIfFeeless`
   - Rationale: Revision checks stop dispatch replay, while exact-current nonces stop future-nonce copies of one valid revision from chaining in the pool
 
@@ -210,6 +226,13 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 ### Store Architecture Principles
 
+- Backend-Neutral View Stores: UI stores describe renderable game state and interaction capability, not its authority source; classic core and chain projection update them through the active backend controller
+  - Rationale: Reuses the exact Svelte visuals/effects without allowing components to call Polkadot API or conflate local persistence with authoritative chain state
+  - Pattern: Route card intent through `gameController.selectCard(index)`; isolate classic and chain durable state; discard callbacks from inactive backend generations
+  - See: [backend contract](docs/game-backends.md#backend-contract)
+- Fail-Closed Chain Projection: Treat RPC/runtime snapshots as untrusted input before they reach shared stores; validate lifecycle, fixed board shape, coordinates, card values, identifiers, and safe display ranges, and disable gameplay on any mismatch
+  - Rationale: JavaScript number coercion can silently corrupt large SCALE integers, while malformed or incompatible runtime state must never become a signable client intent
+  - See: [chain snapshot validation](src/backends/chain/validation.js)
 - Separation of Concerns: `stores.js` declares stores only; `persistence.js` provides generic utilities; business logic lives in components or domain modules
   - Rationale: Prevents circular dependencies, keeps persistence layer reusable
   - Pattern: Load functions passed to store factories, not embedded in persistence.js

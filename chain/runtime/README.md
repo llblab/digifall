@@ -1,5 +1,7 @@
 # Digifall parachain template runtime
 
+> This runtime composes the v1 research lifecycle. The target [v2 protocol](../../docs/on-chain-game-v2.md) preserves the rule engine but requires per-action scheduled entropy, revised state/calls, client integration, and new weights; passing these checks is not approval of v1 economics or randomness for production.
+
 This crate is a minimal Polkadot SDK 2606 parachain-runtime integration target for `pallet-digifall`. It follows the template runtime shape—FRAME runtime composition, Cumulus `ParachainSystem`, `Executive`, `UncheckedExtrinsic`, and `register_validate_block!`—without adding a node or pretending to be a production chain.
 
 The runtime composes:

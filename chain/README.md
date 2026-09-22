@@ -1,6 +1,6 @@
 # Digifall FRAME pallet
 
-`chain/` is the standalone Rust workspace for the experimental on-chain Digifall protocol. It does not modify or depend on the current web client.
+`chain/` is the standalone Rust workspace for the v1 on-chain Digifall prototype. Its rule engine remains the parity baseline for board, card, match, refill/cascade, energy, combo, scoring, and completion behavior. The [v2 lifecycle](../docs/on-chain-game-v2.md) replaces when randomness is committed and how bounded work is scheduled; it does not replace the game rules.
 
 - [`pallets/digifall/src/engine.rs`](pallets/digifall/src/engine.rs) — pure `no_std`, fixed-size deterministic game engine.
 - [`pallets/digifall/src/lib.rs`](pallets/digifall/src/lib.rs) — FRAME storage, calls, session authorization, stake custody, scheduled randomness, settlement, and reward minting.
@@ -8,6 +8,8 @@
 - [`pallets/digifall/src/benchmarking.rs`](pallets/digifall/src/benchmarking.rs) — FRAME harness for every weight path, reveal/fee/queue bounds, settlement, fault cleanup, and conservative per-budget resolution from full-replacement and high-group one-step cases.
 - [`runtime/`](runtime/README.md) — minimal Cumulus parachain runtime proving pallet, transaction-extension, native/asset adapter, and Wasm composition.
 - [`../docs/on-chain-pallet.md`](../docs/on-chain-pallet.md) — protocol contract, runtime integration requirements, and remaining production gates.
+- [`../docs/on-chain-safety-performance.md`](../docs/on-chain-safety-performance.md) — normative v2 performance budgets, security invariants, adversarial validation, and operational gates.
+- [`../docs/game-backends.md`](../docs/game-backends.md) — existing Svelte client reuse, classic/chain backend switching, and lazy Polkadot API integration.
 
 ## Validation
 

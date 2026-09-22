@@ -7,6 +7,7 @@
   import { OVERLAYS } from "./constants.js";
   import { getRandom } from "./core.js";
   import {
+    backendStatusStore,
     combosStore,
     logStore,
     optionsStore,
@@ -126,8 +127,14 @@
             {#if $optionsStore.rapid}
               <span class="rapid">rapid</span>
             {/if}
+            {#if $backendStatusStore.kind === "chain"}
+              <span class="backend">chain</span>
+            {/if}
           </h1>
           <Log />
+          {#if $backendStatusStore.kind === "chain" && $backendStatusStore.message}
+            <small class="backend-status">{$backendStatusStore.message}</small>
+          {/if}
         </button>
       </div>
       <div class="section-2">
@@ -164,6 +171,7 @@
     }
 
     .digifall {
+      position: relative;
       display: flex;
       overflow: hidden;
       width: 100%;
@@ -193,6 +201,24 @@
         background-color: var(--color-dark);
         text-shadow: var(--shadow-0);
       }
+    }
+
+    .backend {
+      color: greenyellow;
+      font-size: 2rem;
+      text-transform: uppercase;
+    }
+
+    .backend-status {
+      position: absolute;
+      right: 1rem;
+      bottom: 0.5rem;
+      left: 1rem;
+      overflow: hidden;
+      color: var(--color-0);
+      font-size: 1.5rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 </style>

@@ -2,9 +2,11 @@
   import Game from "./Game.svelte";
   import Overlay from "./Overlay.svelte";
 
-  import { OVERLAYS, PHASES, RELOAD_IN_SEC } from "./constants.js";
+  import { gameController } from "./backends/controller.js";
+  import { BACKENDS, OVERLAYS, PHASES, RELOAD_IN_SEC } from "./constants.js";
   import {
     energyStore,
+    optionsStore,
     overlayStore,
     phaseStore,
     seedStore,
@@ -14,11 +16,17 @@
   let overlayComponent = $state(null);
 
   let relayImportChecked = false;
+  let selectedBackend = $derived($optionsStore.backend ?? BACKENDS.classic);
 
   $effect(() => {
     if (RELOAD_IN_SEC > 0) {
       setTimeout(() => (location = location), RELOAD_IN_SEC * 1e3);
     }
+  });
+
+  $effect(() => {
+    gameController.activate(selectedBackend);
+    return () => gameController.stop();
   });
 
   $effect(() => {

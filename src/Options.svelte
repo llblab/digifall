@@ -4,7 +4,7 @@
   import Dialog from "./Dialog.svelte";
   import PlayerName from "./PlayerName.svelte";
 
-  import { INITIAL_VALUES, OVERLAYS } from "./constants.js";
+  import { BACKENDS, INITIAL_VALUES, OVERLAYS } from "./constants.js";
   import {
     optionsStore,
     overlayStore,
@@ -57,6 +57,20 @@
     <div class="section-3" in:fly|global={{ y: 24 }}>
       <div class="col">
         <PlayerName bind:this={playerNameComponent} bind:value={playerName} />
+        <div class="backend-options" aria-label="game backend">
+          <button
+            class:active={$optionsStore.backend !== BACKENDS.chain}
+            onclick={() => ($optionsStore.backend = BACKENDS.classic)}
+          >
+            classic
+          </button>
+          <button
+            class:active={$optionsStore.backend === BACKENDS.chain}
+            onclick={() => ($optionsStore.backend = BACKENDS.chain)}
+          >
+            chain
+          </button>
+        </div>
         <input type="checkbox" id="rapid" bind:checked={$optionsStore.rapid} />
         <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
         <label
@@ -141,6 +155,22 @@
     padding-right: 1rem;
     padding-left: 1rem;
     margin-left: 1rem;
+  }
+
+  .backend-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    button {
+      border: 1rem solid currentcolor;
+      background: transparent;
+      color: inherit;
+
+      &.active {
+        background: greenyellow;
+        color: var(--color-dark);
+      }
+    }
   }
 
   input[type="checkbox"] {

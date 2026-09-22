@@ -1,6 +1,8 @@
 # On-chain Digifall pallet
 
-Status: experimental standalone pallet; not connected to the web client or a production runtime.
+Status: superseded v1 prototype; not connected to the web client or a production runtime.
+
+> This document describes the checked-in implementation, not the target lifecycle. The target [on-chain v2 protocol](on-chain-game-v2.md) preserves these gameplay rules but commits initial creation and every card move before its scheduled entropy exists. Do not deploy v1 economics or randomness composition as the product protocol.
 
 ## Scope
 
