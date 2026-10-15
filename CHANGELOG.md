@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `P2P Infrastructure`: Updated default relays to `r2.digifall.app` and `r4.digifall.app`, removing `r1` and `r3` from the default list
 - `Relay Deployment`: Successful installation prints the complete public relay multiaddr for adding it to the game, using the Peer ID from the current systemd invocation rather than stale logs
 - `Relay Deployment`: Reuses accessible Node.js ≥22 and matching npm without global upgrades, with isolated fnm-managed Node 26 fallback and its required system libatomic dependency; systemd runs the selected Node directly and startup verification checks the actual service without disabling SELinux
 - `Relay Deployment`: Webroot certificate issuance no longer installs the unnecessary Certbot nginx plugin, and both package-manager paths supply `python3-pyparsing` to repair existing plugin installations missing that dependency; redeployment scopes Git's ownership exception to the application repository
