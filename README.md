@@ -29,7 +29,7 @@ A deterministic survival puzzle game begins with a reserve of 100 energy points.
 - A server running Linux (Debian/Ubuntu or RHEL/CentOS/Fedora)
 - Root access to the server
 - A domain name pointing to your server (for SSL certificate)
-- Node.js v22+ with npm
+- Node.js v22+ with npm (the relay installer provisions Node 26 via fnm if no suitable runtime is available)
 
 ## Relay Node
 
@@ -41,6 +41,8 @@ chmod +x deploy-relay.sh
 sudo ./deploy-relay.sh
 ```
 
+The installer reuses an existing Node.js ≥22 with its matching npm when both work as the `digifall` service user. It does not upgrade the system Node/npm. Otherwise it installs fnm and Node **26.x** in the root-owned `/opt/digifall-runtime` directory, without changing shell profiles or global symlinks. The major is fixed; the initial installation resolves a matching patch version. Systemd runs the resolved Node binary directly, without npm or an fnm shell environment.
+
 To remove the relay:
 
 ```bash
@@ -48,6 +50,8 @@ curl -fsSL https://raw.githubusercontent.com/llblab/digifall/main/scripts/undepl
 chmod +x undeploy-relay.sh
 sudo ./undeploy-relay.sh
 ```
+
+Uninstallation leaves Node/npm and `/opt/digifall-runtime` intact. Automatic application-directory deletion is limited to the canonical `/opt/digifall` path; custom installations require manual directory cleanup. Non-interactive removal defaults to deleting the application, service user, and certificate; set `REMOVE_APP=n`, `REMOVE_USER=n`, or `REMOVE_CERT=n` to retain them.
 
 ## Leaderboard Node
 

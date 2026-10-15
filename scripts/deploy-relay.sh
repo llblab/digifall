@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -e
+set -eo pipefail
+umask 022
 
 log() {
     echo -e "\033[0;32m[INFO]\033[0m $1"
@@ -24,10 +25,6 @@ detect_interactive() {
     [ -t 0 ] && echo true || echo false
 }
 
-get_node_major() {
-    node -v 2>/dev/null | cut -d. -f1 | tr -d v
-}
-
 get_rpm_package_manager() {
     if command -v dnf &>/dev/null; then
         echo dnf
@@ -45,60 +42,51 @@ install_rpm_dependencies() {
     if [ -f /etc/centos-release ] || { [ -f /etc/redhat-release ] && [ ! -f /etc/fedora-release ]; }; then
         "$package_manager" install -y epel-release || warn "Failed to install epel-release; certbot packages may be unavailable"
     fi
-    "$package_manager" install -y git nginx certbot lsof curl || error "Failed to install base dependencies"
-    "$package_manager" install -y python3-certbot-nginx || warn "Failed to install python3-certbot-nginx; continuing because webroot mode does not require it"
+    # Certbot discovers installed plugins even in webroot mode; repair older nginx plugin installs.
+    "$package_manager" install -y git nginx certbot python3-pyparsing lsof curl unzip ca-certificates libatomic || error "Failed to install base dependencies"
     "$package_manager" install -y policycoreutils-python-utils || \
         "$package_manager" install -y policycoreutils-python || \
         warn "Failed to install SELinux policy utilities; continuing"
 }
 
-ensure_latest_stable_npm() {
-    log "Updating npm to the latest stable release..."
-    "$NPM_BIN" install -g npm@latest || error "Failed to update npm to the latest stable release"
-    NPM_BIN=$(command -v npm || true)
-    [ -n "$NPM_BIN" ] || error "npm was not found after update"
+select_node_runtime() {
+    local node_bin npm_bin major
+    node_bin=$(run_as_digifall "$1" -p 'process.execPath' 2>/dev/null) || return 1
+    # Keep the resolved path safe for literal use in a systemd ExecStart directive.
+    [[ "$node_bin" =~ ^/[a-zA-Z0-9_./+-]+$ ]] || return 1
+    major=$(run_as_digifall "$node_bin" -p 'process.versions.node.split(".")[0]' 2>/dev/null) || return 1
+    [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -ge "$REQUIRED_NODE_MAJOR" ] || return 1
+    npm_bin="$(dirname "$node_bin")/npm"
+    run_as_digifall "$node_bin" "$npm_bin" --version >/dev/null 2>&1 || return 1
+    NODE_BIN="$node_bin"
+    NPM_BIN="$npm_bin"
 }
 
+install_fnm() (
+    local installer_dir
+    installer_dir=$(mktemp -d)
+    trap 'rm -rf -- "$installer_dir"' EXIT
+    curl -fsSL https://fnm.vercel.app/install -o "$installer_dir/install.sh"
+    bash "$installer_dir/install.sh" --skip-shell --install-dir "$RUNTIME_DIR/bin"
+)
+
 ensure_node_runtime() {
-    : "${REQUIRED_NODE_MAJOR:=22}"
-    : "${NODESOURCE_MAJOR:=26}"
-    local current_major
-    local install_major
-    local package_manager
-    if command -v node &>/dev/null; then
-        NODE_BIN=$(command -v node)
-        current_major=$(get_node_major || echo 0)
-        if [ "${current_major:-0}" -lt "$REQUIRED_NODE_MAJOR" ]; then
-            error "Node.js $REQUIRED_NODE_MAJOR+ is required, found $($NODE_BIN -v) at $NODE_BIN. Install/activate a newer Node.js and rerun this script."
+    local candidate
+    while IFS= read -r candidate; do
+        if select_node_runtime "$candidate"; then
+            log "Using existing Node.js at $NODE_BIN (npm unchanged)"
+            return 0
         fi
-        NPM_BIN=$(command -v npm || true)
-        if [ -z "$NPM_BIN" ]; then
-            error "Node.js was found at $NODE_BIN, but npm was not found. Install/activate npm for the existing Node.js runtime and rerun this script."
-        fi
-        ensure_latest_stable_npm
-        return
+    done < <(type -a -p node || true)
+    warn "No usable Node.js $REQUIRED_NODE_MAJOR+ with npm found. Installing Node.js $TARGET_NODE_MAJOR via fnm..."
+    install -d -m 755 "$RUNTIME_DIR" "$RUNTIME_DIR/bin"
+    if [ ! -x "$RUNTIME_DIR/bin/fnm" ]; then
+        install_fnm
     fi
-    install_major="$NODESOURCE_MAJOR"
-    warn "Node.js was not found. Installing NodeSource Node.js $install_major.x..."
-    if command -v apt-get &>/dev/null; then
-        curl -fsSL "https://deb.nodesource.com/setup_$install_major.x" | bash -
-        apt-get install -y nodejs
-    elif package_manager=$(get_rpm_package_manager); then
-        curl -fsSL "https://rpm.nodesource.com/setup_$install_major.x" | bash -
-        "$package_manager" install -y nodejs
-    else
-        error "Unsupported package manager. This script requires apt, dnf, or yum."
-    fi
-    NODE_BIN=$(command -v node || true)
-    NPM_BIN=$(command -v npm || true)
-    current_major=$(get_node_major || echo 0)
-    if [ -z "$NODE_BIN" ] || [ -z "$NPM_BIN" ]; then
-        error "Node.js/npm installation failed. Install Node.js $REQUIRED_NODE_MAJOR+ with npm and rerun this script."
-    fi
-    if [ "${current_major:-0}" -lt "$REQUIRED_NODE_MAJOR" ]; then
-        error "Node.js $REQUIRED_NODE_MAJOR+ is required, found $($NODE_BIN -v)."
-    fi
-    ensure_latest_stable_npm
+    "$RUNTIME_DIR/bin/fnm" --fnm-dir "$RUNTIME_DIR" install "$TARGET_NODE_MAJOR"
+    candidate=$("$RUNTIME_DIR/bin/fnm" --fnm-dir "$RUNTIME_DIR" exec --using="$TARGET_NODE_MAJOR" node -p 'process.execPath')
+    select_node_runtime "$candidate" || error "Installed Node.js/npm is not usable by the digifall user"
+    log "Using fnm-managed Node.js at $NODE_BIN"
 }
 
 run_as_user() {
@@ -117,6 +105,17 @@ run_as_digifall() {
     run_as_user digifall "$@"
 }
 
+get_relay_peer_id() {
+    local invocation peer_id
+    invocation=$(systemctl show digifall-relay.service --property=InvocationID --value) || return 1
+    [[ "$invocation" =~ ^[0-9a-f]{32}$ ]] || return 1
+    # Restrict logs to this service invocation so an old peer identity cannot leak into the address.
+    peer_id=$(journalctl -u digifall-relay.service "_SYSTEMD_INVOCATION_ID=$invocation" --no-pager -o cat |
+        awk '/^libp2p relay starting with id: / { id=$NF } END { print id }') || return 1
+    [[ "$peer_id" =~ ^[1-9A-HJ-NP-Za-km-z]+$ ]] || return 1
+    printf '%s\n' "$peer_id"
+}
+
 require_root
 INTERACTIVE=$(detect_interactive)
 [ "$INTERACTIVE" = false ] && warn "Running in non-interactive mode. Using default values."
@@ -127,7 +126,8 @@ DEFAULT_DOMAIN="relay.digifall.app"
 DEFAULT_EMAIL="shlavik@gmail.com"
 DEFAULT_RESTART_FREQUENCY="daily"
 REQUIRED_NODE_MAJOR="22"
-NODESOURCE_MAJOR="26"
+TARGET_NODE_MAJOR="26"
+RUNTIME_DIR="/opt/digifall-runtime"
 NODE_BIN=""
 NPM_BIN=""
 
@@ -145,12 +145,19 @@ RESTART_FREQUENCY=${RESTART_FREQUENCY:-$DEFAULT_RESTART_FREQUENCY}
 
 log "Using domain: $DOMAIN"
 
+# Runtime selection must check access using the service identity, not root.
+if ! id -u digifall > /dev/null 2>&1; then
+    log "Creating dedicated user 'digifall'"
+    useradd -r -s /bin/false digifall
+fi
+cd /
+
 # Install required dependencies based on distribution
 if command -v apt-get &>/dev/null; then
     log "Installing dependencies with apt..."
     apt-get update
-    apt-get install -y git nginx certbot lsof curl
-    apt-get install -y python3-certbot-nginx || warn "Failed to install python3-certbot-nginx; continuing because webroot mode does not require it"
+    # Certbot discovers installed plugins even in webroot mode; repair older nginx plugin installs.
+    apt-get install -y git nginx certbot python3-pyparsing lsof curl unzip ca-certificates libatomic1
     ensure_node_runtime
     # Configure firewall for Debian/Ubuntu
     if command -v ufw &>/dev/null; then
@@ -173,12 +180,16 @@ else
     error "Unsupported package manager. This script requires apt, dnf, or yum."
 fi
 
+# npm lifecycle scripts must resolve the same Node selected for systemd.
+export PATH="$(dirname "$NODE_BIN"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 # Set up application code repository
 if [ -d "$APP_DIR" ]; then
     log "Repository directory exists, updating..."
     cd "$APP_DIR"
-    git fetch origin
-    git checkout -B main origin/main
+    # The previous deployment transfers ownership to the service user.
+    git -c safe.directory="$APP_DIR" fetch origin
+    git -c safe.directory="$APP_DIR" checkout -B main origin/main
 else
     log "Cloning repository..."
     git clone https://github.com/llblab/digifall.git "$APP_DIR" || error "Failed to clone repository"
@@ -187,36 +198,13 @@ fi
 
 # Install dependencies
 log "Installing Node.js dependencies (production only)..."
-"$NPM_BIN" install --omit=dev || error "Failed to install Node.js dependencies"
-
-# Create dedicated user for the service
-if ! id -u digifall > /dev/null 2>&1; then
-    log "Creating dedicated user 'digifall'"
-    useradd -r -s /bin/false digifall
-fi
+"$NODE_BIN" "$NPM_BIN" install --omit=dev || error "Failed to install Node.js dependencies"
 
 # Ensure permissions
 chown -R digifall:digifall "$APP_DIR"
 # Ensure the peerstore directory is writable if it exists or will be created
 mkdir -p "$APP_DIR/nodes/relay/peerstore"
 chown -R digifall:digifall "$APP_DIR/nodes/relay/peerstore"
-
-# Start the application temporarily as digifall user to verify it works
-log "Starting application temporarily for 5 seconds..."
-(cd "$APP_DIR" && run_as_digifall "$NPM_BIN" run relay) &
-APP_PID=$!
-sleep 5
-
-# Terminate the application, or fail if it exited before verification completed
-if ps -p "$APP_PID" > /dev/null; then
-    log "Stopping temporary application instance..."
-    kill "$APP_PID"
-    sleep 2
-    kill -9 "$APP_PID" 2>/dev/null || true
-else
-    wait "$APP_PID" || true
-    error "Temporary relay process exited before verification completed. Check that $NPM_BIN is usable by the digifall user and that the relay can start."
-fi
 
 # Check for and stop any existing services on port 80
 log "Checking for services using port 80..."
@@ -244,7 +232,7 @@ Type=simple
 User=digifall
 Group=digifall
 WorkingDirectory=$APP_DIR
-ExecStart=$NPM_BIN run relay
+ExecStart=$NODE_BIN $APP_DIR/nodes/relay/relay.mjs
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -308,11 +296,6 @@ if command -v getenforce &>/dev/null && [ "$(getenforce)" = "Enforcing" ]; then
 
     # Allow nginx to connect to network (needed for proxy)
     setsebool -P httpd_can_network_connect 1 || warn "Failed to set httpd_can_network_connect boolean"
-
-    # Temporarily set SELinux to permissive mode for certificate acquisition
-    log "Temporarily setting SELinux to permissive mode for certificate acquisition"
-    CURRENT_MODE=$(getenforce)
-    setenforce 0
 fi
 
 # Create Nginx configuration
@@ -369,12 +352,6 @@ cat > /etc/letsencrypt/renewal-hooks/deploy/digifall-nginx-reload.sh << 'HOOK_EO
 systemctl reload nginx
 HOOK_EOF
 chmod +x /etc/letsencrypt/renewal-hooks/deploy/digifall-nginx-reload.sh
-
-# Restore SELinux if we temporarily disabled it
-if [ -n "$CURRENT_MODE" ] && [ "$CURRENT_MODE" = "Enforcing" ]; then
-    log "Restoring SELinux to enforcing mode"
-    setenforce 1
-fi
 
 # Create final Nginx configuration with SSL
 log "Creating final Nginx configuration with SSL"
@@ -444,7 +421,10 @@ systemctl enable digifall-relay.service
 systemctl enable nginx.service
 [ "$RESTART_FREQUENCY" != "0" ] && systemctl enable digifall-restart.timer
 
-systemctl start digifall-relay.service || error "Failed to start digifall-relay service"
+systemctl restart digifall-relay.service || error "Failed to start digifall-relay service"
+# Check the actual service environment, without a competing temporary relay.
+sleep 5
+systemctl is-active --quiet digifall-relay.service || error "Relay exited during startup. Check journalctl -u digifall-relay"
 [ "$RESTART_FREQUENCY" != "0" ] && systemctl start digifall-restart.timer || true
 
 # Verify service status
@@ -452,8 +432,12 @@ DIGIFALL_STATUS=$(systemctl is-active digifall-relay.service)
 NGINX_STATUS=$(systemctl is-active nginx.service)
 
 if [ "$DIGIFALL_STATUS" = "active" ] && [ "$NGINX_STATUS" = "active" ]; then
+    PEER_ID=$(get_relay_peer_id) || error "Services are active, but the current relay Peer ID could not be read. Check journalctl -u digifall-relay."
+    RELAY_MULTIADDR="/dns4/$DOMAIN/tcp/443/wss/p2p/$PEER_ID"
     log "====== Installation Complete ======"
     log "Digifall Relay is running at: wss://$DOMAIN"
+    log "Add this address in the game's settings > relays:"
+    printf '%s\n' "$RELAY_MULTIADDR"
     log "Services status:"
     log "  - digifall-relay: $DIGIFALL_STATUS"
     if [ "$RESTART_FREQUENCY" != "0" ]; then

@@ -155,6 +155,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Idempotent Deployment: Relay setup must be single-command, creating systemd services and SSL certs automatically
   - Rationale: Radical simplification allows non-technical users to host relays, preventing centralization
+  - Validation: Cover fresh installs, repeat deployment, interrupted/legacy installs, and partial or repeated removal on both DEB and RPM paths. Repair known missing dependencies automatically; preserve unrelated services, credentials, and data. Unsupported states must fail with actionable diagnostics rather than destructive guesses; static checks alone do not prove cross-distribution deployment.
   - See: [scripts/deploy-relay.sh](scripts/deploy-relay.sh)
 
 - Early Rejection: Validate record constraints (moves length, field types) before expensive replay
@@ -171,7 +172,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Deployment Runtime Validation: Relay deployment must validate both Node.js and npm before installing app dependencies
   - Rationale: Distros can provide a usable `node` binary without `npm`; systemd units should use resolved absolute runtime paths
-  - Pattern: Keep curl-installed lifecycle scripts self-contained; duplicate shell helpers intentionally when single-file bootstrap reliability matters more than DRY; respect an existing Node.js runtime and install the current stable NodeSource major only when no `node` is available; refresh npm to the latest stable release after runtime detection/installation; fail deployment if the resolved npm runtime cannot keep the relay alive as the `digifall` service user
+  - Pattern: Keep curl-installed lifecycle scripts self-contained; reuse Node ≥22 with matching npm only after checking access as `digifall`; otherwise provision Node 26 via fnm in root-owned `/opt/digifall-runtime` without changing system Node/npm or shell profiles. Bind systemd directly to the resolved Node executable and check the real service after startup; keep SELinux enforcing. Undeploy skips must return success under `set -e`, and recursive deletion is limited to canonical `/opt/digifall`.
   - See: [ensure_node_runtime()](scripts/deploy-relay.sh)
 
 - CI Toolchain Parity: Keep GitHub Actions Node/npm aligned with the local lockfile-generating toolchain

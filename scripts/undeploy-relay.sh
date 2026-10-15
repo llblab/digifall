@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -eo pipefail
 
 log() {
     echo -e "\033[0;32m[INFO]\033[0m $1"
@@ -34,7 +34,7 @@ is_yes() {
 get_systemd_working_directory() {
     local service_file="$1"
     [ -f "$service_file" ] || return 0
-    grep "^WorkingDirectory=" "$service_file" | cut -d= -f2-
+    awk '/^WorkingDirectory=/ { sub(/^WorkingDirectory=/, ""); print; exit }' "$service_file"
 }
 
 stop_disable_unit() {
@@ -82,6 +82,7 @@ print_summary() {
     is_yes "$REMOVE_APP" && log "  - Remove application directory: $APP_DIR"
     is_yes "$REMOVE_USER" && log "  - Remove digifall system user"
     is_yes "$REMOVE_CERT" && log "  - Delete Let's Encrypt certificate for $DOMAIN"
+    return 0
 }
 
 confirm_interactive_options() {
@@ -113,8 +114,8 @@ set_noninteractive_options() {
 }
 
 reload_nginx_if_running() {
-    command -v nginx &>/dev/null || return
-    systemctl is-active --quiet nginx 2>/dev/null || return
+    command -v nginx &>/dev/null || return 0
+    systemctl is-active --quiet nginx 2>/dev/null || return 0
     if nginx -t 2>/dev/null; then
         systemctl reload nginx
         log "Reloaded nginx configuration"
@@ -124,7 +125,7 @@ reload_nginx_if_running() {
 }
 
 remove_certificate() {
-    is_yes "$REMOVE_CERT" || return
+    is_yes "$REMOVE_CERT" || return 0
     log "Removing Let's Encrypt certificate for $DOMAIN..."
     if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
         warn "Certificate directory not found for $DOMAIN"
@@ -134,26 +135,37 @@ remove_certificate() {
         warn "certbot not found. Certificate files may remain in /etc/letsencrypt/"
         return
     fi
-    certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || warn "Failed to delete certificate with certbot. May need manual removal."
-    log "Removed certificate for $DOMAIN"
+    if certbot delete --cert-name "$DOMAIN" --non-interactive; then
+        log "Removed certificate for $DOMAIN"
+    else
+        warn "Failed to delete certificate with certbot. May need manual removal."
+    fi
+}
+
+validate_application_dir() {
+    is_yes "$REMOVE_APP" || return 0
+    [ -n "$APP_DIR" ] && [ -e "$APP_DIR" ] || return 0
+    local resolved
+    resolved=$(realpath -e -- "$APP_DIR") || error "Cannot resolve application directory: $APP_DIR"
+    # Deployment owns only this directory; custom installations need manual cleanup.
+    [ "$resolved" = /opt/digifall ] || error "Refusing to remove directory outside /opt/digifall: $APP_DIR"
+    APP_DIR="$resolved"
 }
 
 remove_application_dir() {
-    is_yes "$REMOVE_APP" || return
+    is_yes "$REMOVE_APP" || return 0
+    validate_application_dir
     if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
         warn "Application directory not found or not specified"
         return
     fi
-    case "$APP_DIR" in
-        /|/opt|/usr|/var|/home) error "Refusing to remove unsafe application directory: $APP_DIR" ;;
-    esac
     log "Removing application directory: $APP_DIR"
-    rm -rf "$APP_DIR"
+    rm -rf -- "$APP_DIR"
     log "Removed $APP_DIR"
 }
 
 remove_digifall_user() {
-    is_yes "$REMOVE_USER" || return
+    is_yes "$REMOVE_USER" || return 0
     if ! id -u digifall > /dev/null 2>&1; then
         warn "User 'digifall' does not exist"
         return
@@ -173,6 +185,9 @@ if [ "$INTERACTIVE" = true ]; then
 else
     set_noninteractive_options
 fi
+
+# Reject unsafe paths before stopping services or removing any configuration.
+validate_application_dir
 
 log "Starting Digifall relay uninstallation..."
 log "Stopping services..."
@@ -202,4 +217,4 @@ if command -v getenforce &>/dev/null && [ "$(getenforce)" != "Disabled" ]; then
 fi
 
 log "Uninstallation complete"
-log "Not removed because they may be shared: nginx, certbot, Node.js, /var/www/html"
+log "Not removed because they may be shared: nginx, certbot, Node.js, fnm runtime (/opt/digifall-runtime), /var/www/html"
