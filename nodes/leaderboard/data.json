@@ -457,17 +457,17 @@
     },
     {
       "type": "highCombo",
-      "moves": "Gw==",
-      "playerName": "poctek",
-      "timestamp": 1781694479927,
-      "value": 12
+      "moves": "IyIh",
+      "playerName": "abc",
+      "timestamp": 1784617423158,
+      "value": 9
     },
     {
       "type": "highCombo",
-      "moves": "FhA=",
-      "playerName": "yo",
-      "timestamp": 1721927779443,
-      "value": 839
+      "moves": "EBEG",
+      "playerName": "llblab",
+      "timestamp": 1786279614633,
+      "value": 33
     },
     {
       "type": "highCombo",
@@ -926,24 +926,24 @@
     },
     {
       "type": "highCombo",
-      "moves": "CQUFBSE=",
-      "playerName": "qwerty",
-      "timestamp": 1782840732357,
-      "value": 19
+      "moves": "Gw==",
+      "playerName": "poctek",
+      "timestamp": 1781694479927,
+      "value": 12
     },
     {
       "type": "highCombo",
-      "moves": "AgIICA==",
-      "playerName": "hitler",
-      "timestamp": 1739954637175,
-      "value": 915
+      "moves": "DAY=",
+      "playerName": "alla",
+      "timestamp": 1787317893752,
+      "value": 819
     },
     {
       "type": "highCombo",
-      "moves": "FRcRDRUGFxcXGxgYDxUiIiIU",
-      "playerName": "maria.celderei",
-      "timestamp": 1732880536019,
-      "value": 883
+      "moves": "FBwbGhscHRAbIiA=",
+      "playerName": "uwi0c",
+      "timestamp": 1789823478854,
+      "value": 479
     },
     {
       "type": "highCombo",
@@ -1584,10 +1584,10 @@
     },
     {
       "type": "highCombo",
-      "moves": "CgUOBAUFERUVGgsICg4RDhELDg4OFRQJEhIWHQ==",
+      "moves": "AgMDBhsSIyMjCg0VFxs=",
       "playerName": "..nastyhouston",
-      "timestamp": 1774282677777,
-      "value": 1259
+      "timestamp": 1786460949377,
+      "value": 1714
     },
     {
       "type": "highCombo",
@@ -1843,10 +1843,10 @@
     },
     {
       "type": "highCombo",
-      "moves": "Dw8ZGxUUIiIXFxYREQ0WFRQcHBwOHQ8VHB8XEQ4PBAQRFQ4UFxcJCw4cDSMjHQkIFBQbGQkJFwsSDhwgFhYcHBoaChYXFx0dDRMbIB4GBhsREBAICAYDFhQIERQUFhYWGxEDFgoaGg0NDCEiHxUICQUQGBgLCxoiHx8ODhMRDAwXFwsLFhYXHxEjIxQNBhQ=",
+      "moves": "CAMKFxQdGiAMDgcSDBQWGQQIAB8f",
       "playerName": "chernikov",
-      "timestamp": 1781620576015,
-      "value": 1652
+      "timestamp": 1788809657391,
+      "value": 1713
     },
     {
       "type": "highCombo",
@@ -1861,6 +1861,41 @@
       "playerName": "boyko",
       "timestamp": 1740390633575,
       "value": 956
+    },
+    {
+      "type": "highCombo",
+      "moves": "CQUFBSE=",
+      "playerName": "qwerty",
+      "timestamp": 1782840732357,
+      "value": 19
+    },
+    {
+      "type": "highCombo",
+      "moves": "AgIICA==",
+      "playerName": "hitler",
+      "timestamp": 1739954637175,
+      "value": 915
+    },
+    {
+      "type": "highCombo",
+      "moves": "FhA=",
+      "playerName": "yo",
+      "timestamp": 1721927779443,
+      "value": 839
+    },
+    {
+      "type": "highCombo",
+      "moves": "FRcRDRUGFxcXGxgYDxUiIiIU",
+      "playerName": "maria.celderei",
+      "timestamp": 1732880536019,
+      "value": 883
+    },
+    {
+      "type": "highCombo",
+      "moves": "AQoK",
+      "playerName": "markus",
+      "timestamp": 1788700659343,
+      "value": 844
     }
   ],
   "highScore": [
@@ -2314,10 +2349,10 @@
     },
     {
       "type": "highScore",
-      "moves": "FBQNFBATHA0NDw0PFxoRFA0XBwoKCg0RDhkOBQ4TEBQPBwsLCw==",
-      "playerName": "kir4ik",
-      "timestamp": 1740049620977,
-      "value": 2614
+      "moves": "HhsbGxIWIg4ODQ0MCwkcExkZBhQUFA0eExMTEwwVCxQTEwwPDSMjIxUaGBYRDRYJGhgZEhIWIiIaHxERFxobBhoaHRAPFhoaCBUXFxc=",
+      "playerName": "markus",
+      "timestamp": 1788690605908,
+      "value": 1803
     },
     {
       "type": "highScore",
@@ -2769,10 +2804,10 @@
     },
     {
       "type": "highScore",
-      "moves": "DggaGx0YFRwbEBAUGRgYGB4eEhMVDggNAwgYGCMiGRkVFSIUHx8iIxsgEREdEBMTChQVFBQNDxMNHh0dBwIICBgODgYGFxIZBBMPCiIDDCAZFw0GDwIODg4MEQoNDxQJCAYTFBUSGyEWDRcGBggJAQ8PDxYSDAYPEhUWIwoMFBweGBMRGBQZFwcRBgQNCAwQEBIUFhMbGRkfFhYcHxYVHhoYEQ8OEhcKEhUVEREJFwkJCRIOGhUVGBwYFxcPEhgYGBgYGBgZGRATFQ8SEREPGA8XFxkeFgcNBRENEQoDABgbGyMYAAYKBgkACg0GBhwUEBERFBcZGhscHBURHRkdHQ8PBwsSEhsKDxIQCAgXGBweERENDQw=",
-      "playerName": "nastyhouston",
-      "timestamp": 1756050918195,
-      "value": 15443
+      "moves": "FBQNFBATHA0NDw0PFxoRFA0XBwoKCg0RDhkOBQ4TEBQPBwsLCw==",
+      "playerName": "kir4ik",
+      "timestamp": 1740049620977,
+      "value": 2614
     },
     {
       "type": "highScore",
@@ -2790,10 +2825,10 @@
     },
     {
       "type": "highScore",
-      "moves": "CRscGhQUFBYOEwMLCQkbAg0NBxwRDRISEiETGAgVFw8bIiIICAoXEhwcIxcVExAOEA0IEREQDhYIBwQGEBELGxQSEQ8OFBQbGw0ZHBkcFiMQHx8VFQ4OISIXCAgMFxsaGBwhGxsbCxUbICMaIQwICBYdBwcNFhYPDQcLExUVERECCAQCAhcXHRUOFgwdEBAHGhMTDAsMCxAiFxkZHBIRCQ0MEBYWAREUBgsMDA4UCQURDBkhIyAMEAMYGwIGBAsNDAcMBxQYHx4SHx4WAwceHg8PIyMjGB0VEhAZHR4dGiMgGBofDg0NFRwiIRAXFxAbGx0dGhMQDhgSCA0RBQohGg0JBhMdFBQOHx0LDQYFBgUVGAcTFBcBCwoGBAcGCgEHIgMIExcXGx4jGiMhGCMUFRUYHiEiFhYaECAPExISEg0jIxcWFhUPDBEOFCISEhYZFR8fISETIh0fIBwcICMhIB4eIxobGx0dHRQSExwHCwkREBcSFxMNDQcHDg4PEwobExIPGhceGiMd",
+      "moves": "CAEJAwUBBA8LAAIVIiIOAQUCAhAEDBkSEggIBRIYFRULFxMQCwsVHRMPBwUIBhUSDAcREQkNERQZDBMYFBwNDQ0HBxcQCRoDBw4VCwMCAQEBHBwcCQwXFRUVCREMFBITGRgWGSAdFxMcFyITEhYTIx8TEBAQHiIaHRkTGgYaDBweIRALCgMEEQ0YICEgDQ0QDQgQEA0WFg0HFRwUHxEUChMaAwgJFgYMEBYRGRkdHQQMDBAUAw4TDAcPDg4gFhoaIBwZGQIOChkWGxsbISEbIB8hGRkZExoYDgkIFwsaDA4HEA8QCAABARYLCgoNEQkLDQkTExwLCwsSHCAaExUPEQwMGx4eIyIaGhYVChgRFRgTExcUGxQeGhsjIhgVDAgIASIeFhQQBwsLCwsZBQUCBwciDBoQEBYXFBQZFxUbHQwADh0MEBkiERsYIwkLEhQRDwYdFRsbIAwMGB4QIAwMDAwPEAEMCwgODw4PAQIREREGEBwTBRAVDgcNCwcMCBkYGAQbGAgOAQAHBhsNDg0GBwocFhkbGgYHACMgGxEfEgsgGxELCxwHEhUVFSMIDhkUDw4VCA0iGRgZGRQIBhgCBREhASEOEx0ZFBYWGxsHBwYNFxAVGh0WFRAaGQ8EFRUWFhUbEQwXFx0ZGB4TExQNDQ4IDRUPBwgjGSEYEgYiIB4ZFxYTIwwQBxkgAQQCGhoaEhAJAg8ZGBkGAAEQIiIeGxwMBw4OEg8QEBACEQwVBhM=",
       "playerName": "adelyasnimaet",
-      "timestamp": 1766390366092,
-      "value": 17290
+      "timestamp": 1790260174701,
+      "value": 27044
     },
     {
       "type": "highScore",
@@ -3420,10 +3455,10 @@
     },
     {
       "type": "highScore",
-      "moves": "GBYjGBgWFhYSFxYKCgoQEQkaEhYUEhYVDhcXFxEREQ8XGhoaDgcEAQwMAwcIEQwVFBshIR4gIBMICBUVHBoaFxoaGCIcExMMFRUXBwgHERMTDxAiFhcVGR0bHR0ZCQkQEBAXDwgEBBMbDwoAChINERQWDg8PFA8XFBQbEhEPGSMeDg4=",
+      "moves": "DwsLFAgVCgkQEBMLBwcKBhQSFBEYGBMWEgMEBAUIChQVFRYaFhwhIxsfHxUVFRkeIxYSExcFEAYMCAQMEiMJDgoPERgbHRobGx8PDhUZHh4KAhUQEAwLDwkaGhkODAkTCgUDFBAVGQwMDhEPBwMDHBkbExERISISICAVHRkQDAUPBwECAwoGCQEIChIdEQ4gGR4TEx0YGSIjICAWDhAUDxYWDhoZ",
       "playerName": "..nastyhouston",
-      "timestamp": 1758117194475,
-      "value": 5928
+      "timestamp": 1787593973203,
+      "value": 6684
     },
     {
       "type": "highScore",
@@ -3490,10 +3525,10 @@
     },
     {
       "type": "highScore",
-      "moves": "FhYOCQoQFRUVFRYiFR0VFQcOBhEJBBAcDgoMEhkZEg4OERwMBxUVGgoZICEhHyAeGhoaHRgeHh8SFwoDBwYGEhcXBgYeGBUODh4YHhwbIxkhFxcRER0QEBAQDAoLCw4KBA0JCRAVDAcBAwMDEA4MEBkHHxUTFQ0NCxYYGhAQEAwXDAwSDw4YIxgfDwwJHQwYIB8fHSEaHx8KAQ0IEwwMDA4JChUTFSMjGRwdGA8bHCETCQgGFhYBBxMTEQYODBYRERAODg4KBgYGBhMXDx0dBxISEhcXFxcUFBMWFxsNFBQdIRUXGR4YFiEdIB8aHRIYDB0WFxERCRMTEhoM",
+      "moves": "Gg8UHSEHFgoODgYHEBAGCwUFExUHCQgKDQ0ECQkJFRIDDQsBBwcKCg4SFBwTCBIGAQMRFBQUEBAaHCAcEBAREBYSEhMHBRcXHCAPGxsYGBoWDg4aAgQEFwgWBwQVCQICCwEACgcHBwYUFBcKAAASDg4VFRcNIhwDCxAaGhgSHR0UIQoKEhITCwYOFhYREhULFBoMGBgXFyAPDRMEDQ4AAAAHGB8jFhQUDhgCAhEaHyEMDgoPDxMUFAYVFQsRFxgQABEPCQ4OGxMNDQkCBBIMBgs=",
       "playerName": "sara",
-      "timestamp": 1763830366449,
-      "value": 9589
+      "timestamp": 1786369442044,
+      "value": 9751
     },
     {
       "type": "highScore",
@@ -3676,6 +3711,13 @@
       "playerName": "lol",
       "timestamp": 1666293552747,
       "value": 707
+    },
+    {
+      "type": "highScore",
+      "moves": "DggaGx0YFRwbEBAUGRgYGB4eEhMVDggNAwgYGCMiGRkVFSIUHx8iIxsgEREdEBMTChQVFBQNDxMNHh0dBwIICBgODgYGFxIZBBMPCiIDDCAZFw0GDwIODg4MEQoNDxQJCAYTFBUSGyEWDRcGBggJAQ8PDxYSDAYPEhUWIwoMFBweGBMRGBQZFwcRBgQNCAwQEBIUFhMbGRkfFhYcHxYVHhoYEQ8OEhcKEhUVEREJFwkJCRIOGhUVGBwYFxcPEhgYGBgYGBgZGRATFQ8SEREPGA8XFxkeFgcNBRENEQoDABgbGyMYAAYKBgkACg0GBhwUEBERFBcZGhscHBURHRkdHQ8PBwsSEhsKDxIQCAgXGBweERENDQw=",
+      "playerName": "nastyhouston",
+      "timestamp": 1756050918195,
+      "value": 15443
     }
   ]
 }
