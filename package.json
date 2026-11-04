@@ -1,6 +1,6 @@
 {
   "name": "digifall",
-  "version": "0.15.6",
+  "version": "0.15.7",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -24,7 +24,7 @@
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "lint": "stylelint 'src/**/*.{css,svelte}' '*.html' 'public/**/*.html' --fix",
     "format": "prettier --write .",
-    "test:browser": "node scripts/test-card-hold.mjs"
+    "test:browser": "node scripts/test-ui.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

@@ -23,13 +23,7 @@ export function prepareSdkLayout(sdkRoot, sdkManager) {
   }
   fs.accessSync(manager, fs.constants.X_OK);
   const tools = path.join(root, "tools");
-  let existing;
-  try {
-    existing = fs.lstatSync(tools);
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-  if (existing) {
+  if (fs.lstatSync(tools, { throwIfNoEntry: false })) {
     try {
       fs.accessSync(path.join(tools, "bin", "sdkmanager"), fs.constants.X_OK);
     } catch {

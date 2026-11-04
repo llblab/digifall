@@ -24,13 +24,14 @@
     if (menuComponent && menuComponent.isNewGameDialog()) {
       return menuComponent.closeNewGameDialog();
     }
-    $overlayStore =
-      currentOverlay === null ||
-      currentOverlay === OVERLAYS.leaderboard ||
-      currentOverlay === OVERLAYS.options ||
-      currentOverlay === OVERLAYS.relays
-        ? OVERLAYS.menu
-        : null;
+    $overlayStore = [
+      null,
+      OVERLAYS.leaderboard,
+      OVERLAYS.options,
+      OVERLAYS.relays,
+    ].includes($overlayStore)
+      ? OVERLAYS.menu
+      : null;
   }
 
   export function moveUp() {
@@ -135,16 +136,10 @@
     if (!selectors || selectors.length < 1) return;
     const selector = selectors.map((s) => ".overlay " + s).join(", ");
     const elements = Array.from(document.querySelectorAll(selector));
-    if (!node)
-      return shift < 0 ? elements[elements.length + shift] : elements[0];
-    if (shift === 0) return node;
+    if (node && shift === 0) return node;
     const index = elements.indexOf(node);
-    if (index === -1)
-      return shift < 0 ? elements[elements.length + shift] : elements[0];
-    let newIndex = index + shift;
-    if (newIndex < 0) newIndex = elements.length + newIndex;
-    if (newIndex > elements.length - 1) newIndex = newIndex - elements.length;
-    return elements[newIndex];
+    if (index === -1) return shift < 0 ? elements.at(shift) : elements[0];
+    return elements.at((index + shift) % elements.length);
   }
 
   function focus(element, skipRealFocus = false) {

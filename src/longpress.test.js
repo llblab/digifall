@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { getEventListeners } from "node:events";
 import test from "node:test";
 
 import { createLongpress } from "./longpress.js";
@@ -12,10 +13,13 @@ function setup(t) {
   });
   const node = Object.assign(new EventTarget(), { ownerDocument: document });
   const events = [];
-  for (const type of ["longpressstart", "longpressend", "longpressfire"]) {
-    node.addEventListener(type, (event) => events.push(event));
-  }
-  const gesture = createLongpress(node);
+  const record = (phase) => (event) =>
+    events.push({ type: `longpress${phase}`, detail: event });
+  const gesture = createLongpress(node, {
+    onStart: record("start"),
+    onEnd: record("end"),
+    onFire: record("fire"),
+  });
   t.after(() => gesture.destroy());
   const send = (target, type, fields = {}) => {
     const event = Object.assign(new Event(type, { cancelable: true }), fields);
@@ -116,10 +120,19 @@ test("explicit context cancellation is idempotent and cannot fire later", (t) =>
   );
 });
 
-test("destroy cancels timers and removes event listeners", (t) => {
-  const { events, gesture, start } = setup(t);
+test("destroy aborts listeners on every target and cancels the timer", (t) => {
+  const { node, window, document, events, gesture, start } = setup(t);
+  const targets = [
+    [node, "touchstart"],
+    [window, "blur"],
+    [document, "visibilitychange"],
+  ];
+  for (const [target, type] of targets)
+    assert.equal(getEventListeners(target, type).length, 1);
   start();
   gesture.destroy();
+  for (const [target, type] of targets)
+    assert.equal(getEventListeners(target, type).length, 0);
   start();
   t.mock.timers.tick(500);
   assert.deepEqual(

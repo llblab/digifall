@@ -91,7 +91,7 @@
     }
     if (x !== 0) {
       if (focusedCardPrev) {
-        newValue = {
+        const newValue = {
           x: x > 0 ? 0 : CORE.columns - 1,
           y: focusedCardPrev.y,
         };
@@ -208,7 +208,7 @@
 
   function longpressStart(event) {
     if (!game.ready || progress) return;
-    const index = findCardIndex(event.detail);
+    const index = findCardIndex(event);
     if (index === null) return;
     hoverCard(index);
     if (rapid) {
@@ -225,7 +225,7 @@
     const index = longpressedIndex;
     longpressedIndex = null;
     if (rapid || !game.ready || progress || index === null) return;
-    if (index !== findCardIndex(event.detail)) return;
+    if (index !== findCardIndex(event)) return;
     plusFocusedCard();
     blur();
   }
@@ -244,7 +244,11 @@
   }
 
   function longpress(node) {
-    holdGesture = createLongpress(node);
+    holdGesture = createLongpress(node, {
+      onStart: longpressStart,
+      onFire: longpressFire,
+      onEnd: longpressEnd,
+    });
     return holdGesture;
   }
 </script>
@@ -260,9 +264,6 @@
   role="button"
   onmousemove={mouseMove}
   onmouseleave={mouseLeave}
-  onlongpressstart={longpressStart}
-  onlongpressfire={longpressFire}
-  onlongpressend={longpressEnd}
   ondblclick={dblclick}
   bind:this={boardElement}
   use:longpress

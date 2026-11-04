@@ -37,15 +37,14 @@
   });
 
   $effect(() => {
-    document.documentElement.classList[
+    document.documentElement.classList.toggle(
+      "random-color",
       $energyStore.value > 100 ||
-      $phaseStore === PHASES.extra ||
-      $phaseStore === PHASES.combo ||
-      $overlayStore === OVERLAYS.leaderboard ||
-      $overlayStore === OVERLAYS.gameOver
-        ? "add"
-        : "remove"
-    ]("random-color");
+        $phaseStore === PHASES.extra ||
+        $phaseStore === PHASES.combo ||
+        $overlayStore === OVERLAYS.leaderboard ||
+        $overlayStore === OVERLAYS.gameOver,
+    );
   });
 
   function onkeydown(event) {

@@ -61,6 +61,94 @@ try {
       return movesStore.get();
     });
   await reset();
+  await page.keyboard.press("Tab");
+  await page.waitForTimeout(50);
+  assert.deepEqual(errors, [], "Tab must not throw when opening the menu");
+  await page.locator(".menu").waitFor();
+  await page.keyboard.press("ArrowUp");
+  assert.equal(
+    (await page.locator(".menu button.focus").textContent()).trim(),
+    "options",
+  );
+  await page.keyboard.press("Enter");
+  await page.locator(".options").waitFor();
+  await page.keyboard.press("Tab");
+  await page.locator(".menu").waitFor();
+  await page.keyboard.press("ArrowDown");
+  assert.equal(
+    (await page.locator(".menu button.focus").textContent()).trim(),
+    "resume",
+  );
+  await page.keyboard.press("ArrowUp");
+  assert.equal(
+    (await page.locator(".menu button.focus").textContent()).trim(),
+    "options",
+  );
+  await page.keyboard.press("ArrowDown");
+  assert.equal(
+    (await page.locator(".menu button.focus").textContent()).trim(),
+    "resume",
+  );
+  await page.getByRole("button", { name: "new game", exact: true }).click();
+  await page.locator(".dialog").waitFor();
+  await page.keyboard.press("Tab");
+  await page.locator(".dialog").waitFor({ state: "hidden" });
+  await page.locator(".menu").waitFor();
+  await page.keyboard.press("Tab");
+  await page.locator(".overlay").waitFor({ state: "hidden" });
+  assert.equal(
+    await moves(),
+    "",
+    "Tab/dialog navigation must not reset or play the game",
+  );
+  console.log(
+    "PASS: Tab opens/closes overlays and dismisses the new-game dialog first",
+  );
+
+  await reset();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp");
+  await page.locator(".game .score.focus").waitFor();
+  for (const [key, type] of [
+    ["ArrowRight", "hi-score:"],
+    ["Enter", "hi-combo:"],
+    ["Space", "score:"],
+    ["ArrowLeft", "hi-combo:"],
+  ]) {
+    await page.keyboard.press(key);
+    assert.equal(
+      (await page.locator(".game .score .type").textContent()).trim(),
+      type,
+    );
+  }
+  await page.locator(".game .score").click();
+  assert.equal(
+    (await page.locator(".game .score .type").textContent()).trim(),
+    "score:",
+  );
+  assert.equal(await moves(), "");
+  console.log("PASS: score types cycle with arrows, Enter, Space, and clicks");
+
+  await reset();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowDown");
+  await page.locator(".game .digifall.focus").waitFor();
+  await page.keyboard.press("Enter");
+  await page.locator(".menu").waitFor();
+  await page.keyboard.press("Tab");
+  await page.locator(".overlay").waitFor({ state: "hidden" });
+  await page.keyboard.press("ArrowRight");
+  await page.waitForTimeout(50);
+  assert.deepEqual(
+    errors,
+    [],
+    "Restoring horizontal board focus must not throw",
+  );
+  assert.equal(await page.locator(".card.focus").count(), 1);
+  assert.equal(await moves(), "");
+  console.log(
+    "PASS: board focus is restored horizontally after returning from the menu",
+  );
+
+  await reset();
   await touch("touchstart");
   await page.locator(".card.longpress").waitFor();
   await page.evaluate(async () => {

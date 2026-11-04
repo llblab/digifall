@@ -2,22 +2,18 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
-function parseVersion(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.exec(
-    version,
-  );
-  if (!match) throw new Error(`Invalid semver-like version: ${version}`);
-  return match.slice(1, 4).map(Number);
-}
+import {
+  computeVersionCode,
+  parseVersion,
+} from "../android/compute-version-code.mjs";
 
-function compareVersions(a, b) {
+function isNewer(a, b) {
   const left = parseVersion(a);
   const right = parseVersion(b);
-  for (let i = 0; i < 3; i++) {
-    if (left[i] > right[i]) return 1;
-    if (left[i] < right[i]) return -1;
+  for (const part of ["major", "minor", "patch"]) {
+    if (left[part] !== right[part]) return left[part] > right[part];
   }
-  return 0;
+  return false;
 }
 
 function git(args) {
@@ -51,7 +47,11 @@ function writeOutput(values) {
   console.log(JSON.stringify(values, null, 2));
 }
 
-const currentVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const currentVersion = JSON.parse(
+  fs.readFileSync("package.json", "utf8"),
+).version;
+const versionCode = computeVersionCode(currentVersion);
+const isPrerelease = Boolean(parseVersion(currentVersion).prerelease);
 const before = process.env.GITHUB_EVENT_BEFORE || "";
 const forcePublish = process.env.FORCE_PUBLISH === "true";
 let previousRef = before;
@@ -63,14 +63,17 @@ if (!previousVersion && previousRef !== "HEAD^") {
   previousRef = "HEAD^";
   previousVersion = readPackageVersionAt(previousRef);
 }
-const versionIncreased = previousVersion
-  ? compareVersions(currentVersion, previousVersion) > 0
-  : false;
+const versionIncreased =
+  Boolean(previousVersion) && isNewer(currentVersion, previousVersion);
 const currentTagReleased = refPointsAtHead(`refs/tags/v${currentVersion}`);
 writeOutput({
   current_version: currentVersion,
+  version_code: String(versionCode),
+  is_prerelease: String(isPrerelease),
   previous_version: previousVersion,
   version_increased: String(versionIncreased),
   current_tag_released: String(currentTagReleased),
-  publish_needed: String(forcePublish || (versionIncreased && !currentTagReleased)),
+  publish_needed: String(
+    forcePublish || (versionIncreased && !currentTagReleased && !isPrerelease),
+  ),
 });

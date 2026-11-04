@@ -21,7 +21,7 @@
   });
 
   export function isNewGameDialog() {
-    return dialogComponent.visible;
+    return dialogVisible;
   }
 
   export function closeNewGameDialog() {

@@ -8,7 +8,7 @@ Digifall ships as a hosted PWA at `https://digifall.app/` and as an Android Trus
 
 On push to `main`, `.github/workflows/gh-pages-deploy.yml` keeps deploying the web app to GitHub Pages. The separate `.github/workflows/android-play-release.yml` workflow:
 
-1. Detects whether `package.json.version` increased.
+1. Computes version metadata and publish eligibility once in `scripts/detect-version-bump.mjs`, reusing the Android version parser/code validation; ordinary pushes exclude prereleases, while explicit forced recovery remains available.
 2. Skips publish when the current `vX.Y.Z` tag already points at `HEAD`, so amending a published release commit does not re-upload the same Android versionCode.
 3. When a new version increased, generates release notes, creates or updates tag/release `vX.Y.Z`, builds a signed TWA Android package, and uploads it to Google Play.
 

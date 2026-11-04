@@ -2,12 +2,10 @@
  * Owns one cancellable hold gesture, not game state or move execution.
  * The caller must cancel when its game/options context changes.
  */
-export function createLongpress(node, { duration = 400 } = {}) {
+export function createLongpress(node, { onStart, onFire, onEnd }) {
   const document = node.ownerDocument;
   const window = document.defaultView;
   let timer = null;
-  const dispatch = (type, detail) =>
-    node.dispatchEvent(new CustomEvent(type, { bubbles: true, detail }));
   const preventNativeTouchAction = (event) => {
     if (
       event.cancelable &&
@@ -20,7 +18,7 @@ export function createLongpress(node, { duration = 400 } = {}) {
     if (timer === null) return;
     clearTimeout(timer);
     timer = null;
-    dispatch("longpressend", event);
+    onEnd(event);
   };
   const start = (event) => {
     preventNativeTouchAction(event);
@@ -29,9 +27,9 @@ export function createLongpress(node, { duration = 400 } = {}) {
     if (event.type === "mousedown" && event.button !== 0) return;
     timer = setTimeout(() => {
       timer = null;
-      dispatch("longpressfire", event);
-    }, duration);
-    dispatch("longpressstart", event);
+      onFire(event);
+    }, 400);
+    onStart(event);
   };
   const stop = (event) => {
     preventNativeTouchAction(event);
@@ -40,6 +38,7 @@ export function createLongpress(node, { duration = 400 } = {}) {
   const onVisibilityChange = (event) => {
     if (document.hidden) cancel(event);
   };
+  const controller = new AbortController();
   const listeners = [
     [node, "mousedown", start],
     [node, "contextmenu", preventNativeTouchAction],
@@ -55,15 +54,16 @@ export function createLongpress(node, { duration = 400 } = {}) {
     [document, "visibilitychange", onVisibilityChange],
   ];
   for (const [target, type, handler, options] of listeners) {
-    target.addEventListener(type, handler, options);
+    target.addEventListener(type, handler, {
+      ...options,
+      signal: controller.signal,
+    });
   }
   return {
     cancel,
     destroy() {
       cancel();
-      for (const [target, type, handler, options] of listeners) {
-        target.removeEventListener(type, handler, options);
-      }
+      controller.abort();
     },
   };
 }

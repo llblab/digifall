@@ -49,8 +49,7 @@
     focused = false;
   }
 
-  export function nextType(event) {
-    event.preventDefault();
+  export function nextType() {
     type = getNextType(type);
     animateNewType();
   }

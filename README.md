@@ -36,7 +36,7 @@ npm run lint
 npm run build
 ```
 
-The browser check covers long-press cleanup and reused cards. Set `CHROME_PATH` to use an existing Chrome executable instead of Playwright's downloaded Chromium. Android release checks and publishing are described in [Release Flow](docs/release-flow.md).
+The browser check covers long-press cleanup, reused cards, overlay/dialog keyboard navigation, score switching, and focus restoration. Set `CHROME_PATH` to use an existing Chrome executable instead of Playwright's downloaded Chromium. Android release checks and publishing are described in [Release Flow](docs/release-flow.md).
 
 # Server Nodes
 

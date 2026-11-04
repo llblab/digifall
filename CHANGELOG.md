@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.15.7 Keyboard Controls and Cleanup
+
+- `Keyboard Controls`: Fixed Tab navigation between the game and overlays, dismissing the new-game confirmation without closing the menu, score switching with arrows/Enter/Space, and horizontal card-focus restoration after returning from the menu
+- `Maintenance`: Card-hold handling uses direct callbacks and native AbortController-owned listeners instead of a custom event bridge and manual listener teardown; Android release metadata and publish guards are computed once, and SDK setup is simplified without changing gesture timing or release safety checks
+
 ## 0.15.6 Card Hold Highlight Hotfix
 
 - `Touch Controls`: Fixed a long-press highlight that could stay on a reused card after changing rapid mode; interrupted holds now clear their highlight and timer on reset, focus loss, backgrounding, and opening an overlay
