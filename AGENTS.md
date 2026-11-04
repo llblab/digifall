@@ -181,7 +181,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Android Target SDK: Apply API-level requirements after Bubblewrap project generation
   - Rationale: Bubblewrap exposes minimum SDK but hardcodes target SDK in its generated Gradle template
-  - Pattern: Run `android/configure-sdk.mjs` after `bubblewrap update`; keep compile and target SDK aligned and preserve the generated minimum SDK. Verify the signed APK's actual target SDK before publishing, not only its Gradle configuration
+  - Pattern: Pin Bubblewrap CLI/core together and align `android/prepare-sdk.mjs` build-tools with that core; provision its SDK layout/packages explicitly. Run `android/configure-sdk.mjs` after `bubblewrap update`, preserve minimum SDK, and verify the signed APK's actual target SDK before publishing
 
 - Git-Tracked Bootstrap Data: Leaderboard `data.json` committed to repo for disaster recovery and new node bootstrap
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution

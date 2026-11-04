@@ -190,7 +190,9 @@ jobs:
           name: release-notes
           path: dist
       - run: npm ci
-      - run: npm install --no-save @bubblewrap/cli@1.24.1
+      - run: npm install --no-save @bubblewrap/cli@1.27.0 @bubblewrap/core@1.27.0
+      - name: Prepare Bubblewrap SDK layout and packages
+        run: node android/prepare-sdk.mjs "$(command -v sdkmanager)"
       - run: |
           test -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
           test -n "$BUBBLEWRAP_KEYSTORE_PASSWORD"
@@ -218,7 +220,7 @@ jobs:
         working-directory: android
       - name: Verify signed APK targets Android 16 or newer
         run: |
-          target_sdk="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk android/app-release-signed.apk)"
+          target_sdk="$(apkanalyzer manifest target-sdk android/app-release-signed.apk)"
           echo "Signed APK target SDK: $target_sdk"
           if ! [[ "$target_sdk" =~ ^[0-9]+$ ]] || [ "$target_sdk" -lt 36 ]; then
             echo "Refusing to publish an APK targeting below Android API 36" >&2

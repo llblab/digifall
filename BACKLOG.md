@@ -4,6 +4,10 @@ Canonical open-work file for Digifall. Completed delivery history lives in [CHAN
 
 ## Active
 
+- [ ] `Android 0.15.6 delivery recovery`: Complete the explicitly authorized Android-only retry without changing the published tag or version
+  - Evidence: Release commit `6e295c9` deployed the PWA and published GitHub Release `v0.15.6`; Android run `41808359771` failed before producing an APK or uploading to Play because Bubblewrap rejected the modern SDK layout
+  - Prepared: Pin Bubblewrap CLI/core together, provision API-36/build-tools packages explicitly, and expose the compatibility tools path without replacing existing SDK data
+  - Exit criteria: Recovery CI verifies the signed APK target is at least 36 and successfully uploads versionCode 15006 to production; keep the original `v0.15.6` tag unchanged
 - [ ] `iPhone highlight verification` — Device-gated: Ask the tester to verify the card-hold hotfix on the affected iPhone
   - Exit criteria: No persistent tint after holds, matches/card reuse, mode changes, or starting a new game
   - If it recurs: Capture iOS version, rapid-mode history, and affected card classes/computed `::after` styles to distinguish another stale UI-state path from a WebKit rendering artifact; Chromium regressions do not establish iPhone rendering correctness

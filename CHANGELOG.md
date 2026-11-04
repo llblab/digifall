@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `Android Delivery`: CI explicitly prepares Bubblewrap's SDK compatibility layout and Android 36 build dependencies, pins matching CLI/core versions, and resolves SDK tools from the configured runner path rather than assuming a `latest` directory
+
 ## 0.15.6 Card Hold Highlight Hotfix
 
 - `Touch Controls`: Fixed a long-press highlight that could stay on a reused card after changing rapid mode; interrupted holds now clear their highlight and timer on reset, focus loss, backgrounding, and opening an overlay

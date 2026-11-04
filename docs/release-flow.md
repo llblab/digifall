@@ -12,11 +12,13 @@ On push to `main`, `.github/workflows/gh-pages-deploy.yml` keeps deploying the w
 2. Skips publish when the current `vX.Y.Z` tag already points at `HEAD`, so amending a published release commit does not re-upload the same Android versionCode.
 3. When a new version increased, generates release notes, creates or updates tag/release `vX.Y.Z`, builds a signed TWA Android package, and uploads it to Google Play.
 
-Manual dispatch with `force_publish=true` publishes the current version even if the version did not change or the tag already points at `HEAD`. Use that only for deliberate recovery/retry releases, because Google Play rejects replacing an already published APK versionCode.
+Manual dispatch with `force_publish=true` publishes the current version even if the version did not change or the tag already points at `HEAD`. Use that only for deliberate recovery/retry releases, because Google Play rejects replacing an already published APK versionCode. If Android failed before any upload while the GitHub Release already exists, an explicitly authorized CI-only repair can retry Android from corrected `main` with the same version; manual dispatch skips the GitHub Release job, so the published tag remains immutable. Confirm the failed attempt never uploaded that versionCode, then dispatch with an explicit `play_track`, `release_status=completed`, and `dry_run=false`. Record the recovery run's commit because it may differ from the tag only in CI/support files.
 
 GitHub workflow run titles use the shared `Digifall / <surface> / <ref> / <event>` pattern for readable Actions history; GitHub's own `pages-build-deployment` workflow is system-managed and remains outside project control.
 
 ## Android SDK and versioning
+
+CI pins Bubblewrap CLI and core together at `1.27.0`. `android/prepare-sdk.mjs` exposes the selected command-line tools at the legacy SDK `tools` path expected by Bubblewrap, preserving an existing usable tools directory and refusing to replace an incompatible one. It explicitly installs platform-tools, Android platform 36, and build-tools `36.1.0`; keep the build-tools version aligned with the pinned Bubblewrap core rather than relying on the runner image's preinstalled packages.
 
 The generated TWA compiles against and targets Android 16 (API level 36). Bubblewrap does not expose the target SDK in `twa-manifest.json`, so `android/configure-sdk.mjs` applies and verifies both SDK values after `bubblewrap update`. Before uploading artifacts or publishing to Play, CI also reads the target SDK from the signed APK using `apkanalyzer` and refuses a missing, invalid, or below-36 value. The minimum supported device SDK remains Bubblewrap's default and does not need to match the Google Play target API requirement.
 
