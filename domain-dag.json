@@ -41,7 +41,7 @@
     {
       "name": "ui",
       "rank": 3,
-      "files": ["src/**/*.svelte", "src/main.js"]
+      "files": ["src/**/*.svelte", "src/longpress.js", "src/main.js"]
     },
     {
       "name": "server-nodes",

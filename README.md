@@ -22,6 +22,22 @@ A deterministic survival puzzle game begins with a reserve of 100 energy points.
 - [Changelog](CHANGELOG.md)
 - [Docs index](docs/README.md)
 
+# Development Checks
+
+Use Node 24 with npm 11 to match CI and the lockfile toolchain.
+
+```bash
+npm ci
+npm test
+npx playwright install chromium
+npm run test:browser
+npm run check
+npm run lint
+npm run build
+```
+
+The browser check covers long-press cleanup and reused cards. Set `CHROME_PATH` to use an existing Chrome executable instead of Playwright's downloaded Chromium. Android release checks and publishing are described in [Release Flow](docs/release-flow.md).
+
 # Server Nodes
 
 ## Prerequisites

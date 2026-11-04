@@ -14,7 +14,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@llblab/uniqueue": "1.4.0",
+    "@llblab/uniqueue": "1.4.1",
     "uint8arrays": "6.1.1"
   }
 }

@@ -18,7 +18,7 @@ GitHub workflow run titles use the shared `Digifall / <surface> / <ref> / <event
 
 ## Android SDK and versioning
 
-The generated TWA compiles against and targets Android 16 (API level 36). Bubblewrap does not expose the target SDK in `twa-manifest.json`, so `android/configure-sdk.mjs` applies and verifies both SDK values after `bubblewrap update`. The minimum supported device SDK remains Bubblewrap's default and does not need to match the Google Play target API requirement.
+The generated TWA compiles against and targets Android 16 (API level 36). Bubblewrap does not expose the target SDK in `twa-manifest.json`, so `android/configure-sdk.mjs` applies and verifies both SDK values after `bubblewrap update`. Before uploading artifacts or publishing to Play, CI also reads the target SDK from the signed APK using `apkanalyzer` and refuses a missing, invalid, or below-36 value. The minimum supported device SDK remains Bubblewrap's default and does not need to match the Google Play target API requirement.
 
 `android/compute-version-code.mjs` maps semver to Android versionCode:
 
@@ -147,6 +147,8 @@ adb shell am start \
 ```bash
 npm ci
 npm test
+npx playwright install chromium
+npm run test:browser
 npm run check
 npm run build
 node android/compute-version-code.mjs

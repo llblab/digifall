@@ -1,6 +1,6 @@
 {
   "name": "digifall",
-  "version": "0.15.5",
+  "version": "0.15.6",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -10,7 +10,7 @@
   ],
   "overrides": {
     "stylelint-config-idiomatic-order": {
-      "stylelint-order": "8.1.1"
+      "stylelint-order": "8.1.3"
     }
   },
   "scripts": {
@@ -23,45 +23,47 @@
     "test": "node --test src/*.test.js android/*.test.mjs && npm test --workspaces",
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "lint": "stylelint 'src/**/*.{css,svelte}' '*.html' 'public/**/*.html' --fix",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:browser": "node scripts/test-card-hold.mjs"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "7.2.0",
-    "autoprefixer": "10.5.4",
-    "postcss": "8.5.25",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "autoprefixer": "10.6.2",
+    "postcss": "8.5.32",
     "postcss-nested": "7.0.2",
-    "prettier": "3.9.6",
+    "prettier": "3.9.10",
     "prettier-plugin-svelte": "4.1.1",
-    "stylelint": "17.14.1",
+    "stylelint": "17.16.0",
     "stylelint-config-css-modules": "4.6.0",
     "stylelint-config-html": "1.1.0",
     "stylelint-config-idiomatic-order": "10.0.0",
     "stylelint-config-standard": "40.0.0",
-    "stylelint-order": "8.1.1",
-    "svelte": "5.56.8",
-    "svelte-check": "4.7.4",
-    "vite": "8.2.0",
+    "stylelint-order": "8.1.3",
+    "svelte": "5.57.3",
+    "svelte-check": "4.7.8",
+    "vite": "8.3.5",
     "vite-plugin-pwa": "1.3.0",
-    "workbox-build": "7.4.1"
+    "workbox-build": "7.4.1",
+    "playwright": "1.64.1"
   },
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "14.1.2",
     "@chainsafe/libp2p-yamux": "8.0.1",
-    "@libp2p/bootstrap": "12.0.29",
-    "@libp2p/circuit-relay-v2": "4.2.11",
-    "@libp2p/config": "1.1.36",
-    "@libp2p/floodsub": "11.0.28",
-    "@libp2p/identify": "4.1.12",
-    "@libp2p/interface": "3.2.5",
-    "@libp2p/keychain": "6.1.6",
-    "@libp2p/plaintext": "3.0.26",
+    "@libp2p/bootstrap": "12.0.36",
+    "@libp2p/circuit-relay-v2": "4.2.17",
+    "@libp2p/config": "1.1.40",
+    "@libp2p/floodsub": "11.1.1",
+    "@libp2p/identify": "4.1.18",
+    "@libp2p/interface": "3.4.0",
+    "@libp2p/keychain": "6.1.10",
+    "@libp2p/plaintext": "3.0.32",
     "@libp2p/pubsub-peer-discovery": "12.0.0",
-    "@libp2p/websockets": "10.1.19",
+    "@libp2p/websockets": "10.1.25",
     "@multiformats/multiaddr": "13.0.3",
     "datastore-fs": "12.0.1",
     "datastore-idb": "5.0.1",
     "howler": "2.2.4",
-    "libp2p": "3.3.8",
+    "libp2p": "3.5.1",
     "uint8arrays": "6.1.1"
   }
 }

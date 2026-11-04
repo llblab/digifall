@@ -181,7 +181,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Android Target SDK: Apply API-level requirements after Bubblewrap project generation
   - Rationale: Bubblewrap exposes minimum SDK but hardcodes target SDK in its generated Gradle template
-  - Pattern: Run `android/configure-sdk.mjs` after `bubblewrap update`; keep compile and target SDK aligned and preserve the generated minimum SDK
+  - Pattern: Run `android/configure-sdk.mjs` after `bubblewrap update`; keep compile and target SDK aligned and preserve the generated minimum SDK. Verify the signed APK's actual target SDK before publishing, not only its Gradle configuration
 
 - Git-Tracked Bootstrap Data: Leaderboard `data.json` committed to repo for disaster recovery and new node bootstrap
   - Rationale: P2P network may be empty; git provides backup and historical record of leaderboard evolution
@@ -206,7 +206,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 
 - Game Surface Owns Touch Gestures: Long-press gameplay zones must suppress browser-native selection/callout/scroll gestures at both CSS and event-listener boundaries
   - Rationale: Mobile Safari can otherwise treat a long tap as text selection or callout instead of the game action; touch listeners that call `preventDefault()` must not be passive
-  - Pattern: Scope suppression to the board/card surface, keep the state machine unchanged, and avoid global overrides that break form controls or overlays
+  - Pattern: Scope native-gesture suppression to the board/card surface. `src/longpress.js` owns one cancellable gesture timer; Board must clear hold state independently of rapid mode and invalidate it on game/mode/overlay changes. Preserve deterministic mechanics and cover state/DOM reuse with `npm run test:browser`
 
 - Move Encoding: Game actions serialized as base64-encoded integer arrays for compactness
   - Rationale: Reduces localStorage size and P2P bandwidth

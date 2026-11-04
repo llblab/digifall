@@ -92,6 +92,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm run check
       - run: npm run build
 
   release-notes:
@@ -213,6 +216,14 @@ jobs:
             --signingKeyAlias="$ANDROID_KEY_ALIAS"
           test -f app-release-bundle.aab
         working-directory: android
+      - name: Verify signed APK targets Android 16 or newer
+        run: |
+          target_sdk="$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk android/app-release-signed.apk)"
+          echo "Signed APK target SDK: $target_sdk"
+          if ! [[ "$target_sdk" =~ ^[0-9]+$ ]] || [ "$target_sdk" -lt 36 ]; then
+            echo "Refusing to publish an APK targeting below Android API 36" >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@v6
         with:
           name: android-release-${{ needs.meta.outputs.version }}

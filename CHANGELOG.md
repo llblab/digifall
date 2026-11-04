@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.15.6 Card Hold Highlight Hotfix
+
+- `Touch Controls`: Fixed a long-press highlight that could stay on a reused card after changing rapid mode; interrupted holds now clear their highlight and timer on reset, focus loss, backgrounding, and opening an overlay
+- `Android Compatibility`: Release CI now verifies the signed APK targets Android 16 (API 36) or newer before uploading it to Google Play, in addition to configuring the generated Gradle project
+- `Dependencies`: Refreshed compatible Svelte, Vite, libp2p, and tooling versions and their lockfile dependencies; production dependencies have no known audit vulnerabilities, while remaining low/moderate build-tool advisories are tracked separately
+- `Regression Coverage`: Added deterministic gesture-lifecycle tests and browser coverage for mode changes, interrupted holds, resets, and matched-card reuse; browser checks run in PR validation and Android release CI
 - `P2P Infrastructure`: Updated default relays to `r2.digifall.app` and `r4.digifall.app`, removing `r1` and `r3` from the default list
 - `Relay Deployment`: Successful installation prints the complete public relay multiaddr for adding it to the game, using the Peer ID from the current systemd invocation rather than stale logs
 - `Relay Deployment`: Reuses accessible Node.js ≥22 and matching npm without global upgrades, with isolated fnm-managed Node 26 fallback and its required system libatomic dependency; systemd runs the selected Node directly and startup verification checks the actual service without disabling SELinux

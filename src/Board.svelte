@@ -5,6 +5,7 @@
 
   import { CORE, PHASES } from "./constants.js";
   import { getFieldFromCards } from "./core.js";
+  import { createLongpress } from "./longpress.js";
   import {
     playHit,
     playPlus,
@@ -18,6 +19,7 @@
     logStore,
     matchedIndexesStore,
     optionsStore,
+    overlayStore,
     phaseStore,
     plusIndexStore,
     seedStore,
@@ -26,6 +28,7 @@
   let boardElement = null;
   let sliderHorizontalElement = null;
   let sliderVerticalElement = null;
+  let holdGesture = null;
 
   let focusedCard = $state(null);
   let focusedCardPrev = null;
@@ -52,6 +55,16 @@
 
   $effect(() => {
     if ($seedStore) untrack(() => blur({ muteSound: true }));
+  });
+
+  $effect(() => {
+    // A hold belongs to the game and mode in which it started.
+    rapid;
+    untrack(cancelHold);
+  });
+
+  $effect(() => {
+    if (progress || $overlayStore) untrack(cancelHold);
   });
 
   export function isFocused() {
@@ -128,6 +141,7 @@
   }
 
   export function blur({ savePrev = false, muteSound = false } = {}) {
+    cancelHold();
     if (!isFocused()) return;
     focusedCardPrev = savePrev ? focusedCard : null;
     focusedCard = null;
@@ -208,70 +222,30 @@
   }
 
   function longpressFire(event) {
-    if (rapid) return;
-    const index = findCardIndex(event.detail);
-    if (index !== longpressedIndex) return;
+    const index = longpressedIndex;
     longpressedIndex = null;
+    if (rapid || !game.ready || progress || index === null) return;
+    if (index !== findCardIndex(event.detail)) return;
     plusFocusedCard();
     blur();
   }
 
-  function longpressEnd(_event) {
-    if (!rapid) longpressedIndex = null;
+  function longpressEnd() {
+    longpressedIndex = null;
+  }
+
+  function cancelHold() {
+    holdGesture?.cancel();
+    longpressedIndex = null;
   }
 
   function dblclick(event) {
     event.preventDefault();
   }
 
-  function preventNativeTouchAction(event = {}) {
-    if (!event.type?.startsWith("touch") && event.type !== "contextmenu") {
-      return;
-    }
-    if (event.cancelable) event.preventDefault();
-  }
-
-  export function longpress(node, { duration = 400 } = {}) {
-    let timer;
-    $effect(() => {
-      const start = (event = {}) => {
-        preventNativeTouchAction(event);
-        node.dispatchEvent(
-          new CustomEvent("longpressstart", { bubbles: true, detail: event }),
-        );
-        timer = window.setTimeout(() => {
-          node.dispatchEvent(
-            new CustomEvent("longpressfire", { bubbles: true, detail: event }),
-          );
-        }, duration);
-      };
-      const stop = (event = {}) => {
-        preventNativeTouchAction(event);
-        clearTimeout(timer);
-        node.dispatchEvent(
-          new CustomEvent("longpressend", { bubbles: true, detail: event }),
-        );
-      };
-      node.addEventListener("mousedown", start);
-      node.addEventListener("contextmenu", preventNativeTouchAction);
-      node.addEventListener("touchstart", start, { passive: false });
-      node.addEventListener("touchmove", preventNativeTouchAction, {
-        passive: false,
-      });
-      node.addEventListener("touchend", stop, { passive: false });
-      node.addEventListener("touchcancel", stop, { passive: false });
-      window.addEventListener("mouseup", stop);
-      return () => {
-        clearTimeout(timer);
-        node.removeEventListener("mousedown", start);
-        node.removeEventListener("contextmenu", preventNativeTouchAction);
-        node.removeEventListener("touchstart", start);
-        node.removeEventListener("touchmove", preventNativeTouchAction);
-        node.removeEventListener("touchend", stop);
-        node.removeEventListener("touchcancel", stop);
-        window.removeEventListener("mouseup", stop);
-      };
-    });
+  function longpress(node) {
+    holdGesture = createLongpress(node);
+    return holdGesture;
   }
 </script>
 
