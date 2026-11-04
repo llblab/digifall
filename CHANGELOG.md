@@ -2,12 +2,10 @@
 
 ## Unreleased
 
-- `Android Delivery`: CI explicitly prepares Bubblewrap's SDK compatibility layout and Android 36 build dependencies, pins matching API-21-compatible CLI/core versions, and resolves SDK tools from the configured runner path rather than assuming a `latest` directory
-
 ## 0.15.6 Card Hold Highlight Hotfix
 
 - `Touch Controls`: Fixed a long-press highlight that could stay on a reused card after changing rapid mode; interrupted holds now clear their highlight and timer on reset, focus loss, backgrounding, and opening an overlay
-- `Android Compatibility`: Release CI now verifies the signed APK targets Android 16 (API 36) or newer before uploading it to Google Play, in addition to configuring the generated Gradle project
+- `Android Compatibility`: Production Android delivery targets Android 16 (API 36), verified in the signed APK before upload; CI explicitly provisions a compatible Bubblewrap SDK/toolchain while preserving minimum API 21 device support
 - `Dependencies`: Refreshed compatible Svelte, Vite, libp2p, and tooling versions and their lockfile dependencies; production dependencies have no known audit vulnerabilities, while remaining low/moderate build-tool advisories are tracked separately
 - `Regression Coverage`: Added deterministic gesture-lifecycle tests and browser coverage for mode changes, interrupted holds, resets, and matched-card reuse; browser checks run in PR validation and Android release CI
 - `P2P Infrastructure`: Updated default relays to `r2.digifall.app` and `r4.digifall.app`, removing `r1` and `r3` from the default list
