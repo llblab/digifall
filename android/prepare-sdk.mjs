@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // Keep aligned with the exact Bubblewrap CLI/core version installed by CI.
-export const BUBBLEWRAP_BUILD_TOOLS = "36.1.0";
+export const BUBBLEWRAP_BUILD_TOOLS = "34.0.0";
 
 export function prepareSdkLayout(sdkRoot, sdkManager) {
   if (!sdkRoot || !sdkManager) {

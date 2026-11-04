@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `Android Delivery`: CI explicitly prepares Bubblewrap's SDK compatibility layout and Android 36 build dependencies, pins matching CLI/core versions, and resolves SDK tools from the configured runner path rather than assuming a `latest` directory
+- `Android Delivery`: CI explicitly prepares Bubblewrap's SDK compatibility layout and Android 36 build dependencies, pins matching API-21-compatible CLI/core versions, and resolves SDK tools from the configured runner path rather than assuming a `latest` directory
 
 ## 0.15.6 Card Hold Highlight Hotfix
 

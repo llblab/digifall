@@ -18,7 +18,7 @@ GitHub workflow run titles use the shared `Digifall / <surface> / <ref> / <event
 
 ## Android SDK and versioning
 
-CI pins Bubblewrap CLI and core together at `1.27.0`. `android/prepare-sdk.mjs` exposes the selected command-line tools at the legacy SDK `tools` path expected by Bubblewrap, preserving an existing usable tools directory and refusing to replace an incompatible one. It explicitly installs platform-tools, Android platform 36, and build-tools `36.1.0`; keep the build-tools version aligned with the pinned Bubblewrap core rather than relying on the runner image's preinstalled packages.
+CI pins Bubblewrap CLI and core together at `1.24.1`, preserving the API-21-compatible Android Browser Helper instead of inheriting a newer dependency that requires API 24. `android/prepare-sdk.mjs` exposes the selected command-line tools at the legacy SDK `tools` path expected by Bubblewrap, preserving an existing usable tools directory and refusing to replace an incompatible one. It explicitly installs platform-tools, Android platform 36, and build-tools `34.0.0`; keep the build-tools version aligned with the pinned Bubblewrap core rather than relying on the runner image's preinstalled packages.
 
 The generated TWA compiles against and targets Android 16 (API level 36). Bubblewrap does not expose the target SDK in `twa-manifest.json`, so `android/configure-sdk.mjs` applies and verifies both SDK values after `bubblewrap update`. Before uploading artifacts or publishing to Play, CI also reads the target SDK from the signed APK using `apkanalyzer` and refuses a missing, invalid, or below-36 value. The minimum supported device SDK remains Bubblewrap's default and does not need to match the Google Play target API requirement.
 
