@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.15.8 Build Dependency Hardening
+
+- `Build Hardening`: Prevented merged build configuration objects from inheriting input-controlled prototype properties by pinning a reviewed, compatible deepmerge fork; added regression checks through both Svelte and Workbox/Rollup dependency paths, without changing gameplay or saved records
+
 ## 0.15.7 Keyboard Controls and Cleanup
 
 - `Keyboard Controls`: Fixed Tab navigation between the game and overlays, dismissing the new-game confirmation without closing the menu, score switching with arrows/Enter/Space, and horizontal card-focus restoration after returning from the menu

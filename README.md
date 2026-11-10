@@ -38,6 +38,14 @@ npm run build
 
 The browser check covers long-press cleanup, reused cards, overlay/dialog keyboard navigation, score switching, and focus restoration. Set `CHROME_PATH` to use an existing Chrome executable instead of Playwright's downloaded Chromium. Android release checks and publishing are described in [Release Flow](docs/release-flow.md).
 
+## Build dependency hardening
+
+`package.json` overrides transitive `deepmerge` with the exact npm alias `npm:@shivammathur/deepmerge@4.3.2`. This reviewed fork preserves the deepmerge 4 API and MIT license while rejecting `__proto__` in both target and source copy loops. The lockfile pins registry tarball integrity; there are no install-time patches or new lifecycle scripts.
+
+`npm test` exercises the merge implementation resolved from each affected consumer (Svelte plugin and Workbox's Rollup resolver), covering null-prototype targets, nested placeholders, target copying, arrays, CommonJS/ESM loading, and normal merge options. These tests fail against upstream 4.3.1. Keep them when updating or removing the override.
+
+[CVE-2026-93753 was rejected](https://www.cve.org/CVERecord?id=CVE-2026-93753) because the CNA did not consider the behavior a security vulnerability; [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) remains active. This change deliberately hardens returned-object prototypes rather than claiming global `Object.prototype` pollution or an exploitable game/P2P path. Remaining Workbox/glob/minimatch advisories are tracked in [BACKLOG.md](BACKLOG.md).
+
 # Server Nodes
 
 ## Prerequisites
