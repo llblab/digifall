@@ -66,7 +66,7 @@ Not a traditional game-as-product, but a protocol-as-game:
 - P2P Leaderboard: Floodsub + eventual consistency without consensus algorithm
   - Rationale: Zero hosting cost, censorship resistance, community ownership
   - Trade-offs: No global ordering guarantees, requires relay infrastructure for NAT traversal
-  - Note: Floodsub is temporary—gossipsub will return when stable for libp2p v3
+  - Note: Floodsub is temporary—reintroduce a libp2p v3-compatible Gossipsub dependency with its implementation migration, not as an unused installed fallback
   - See: [leaderboard.js](src/leaderboard.js)
 
 ### Tactical (Implementation details - can evolve with justification)
@@ -225,7 +225,8 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Pattern: Catch storage failures at persistence boundaries, keep reactive store updates synchronous, and reuse safe JSON loaders for custom migrations
 - Personal-Best Leaderboard Sync: localStorage personal records must be replay-validated and queued into the IndexedDB leaderboard without phase gating
   - Rationale: highCombo is saved during combo resolution; idle/gameOver-only sync can strand a valid local best until the user beats it again
-  - Pattern: Add record type on a copy, call `LeaderboardCore.handleRecordWithValidation()`, then persist updated leaderboard snapshots
+  - Pattern: Add record type on a copy, replay-validate and normalize the local value, then call `LeaderboardCore.handleRecord()`; its accepted-update callback owns persistence and peer sync
+  - Async normalization: Record entries are replaced on updates; apply a replay correction only while the captured entry is still current, merging into the latest store state rather than restoring a pre-validation snapshot
 
 ### Shared Package Principles
 
@@ -237,7 +238,7 @@ Not a traditional game-as-product, but a protocol-as-game:
   - Anti-pattern: Duplicating relay lists across files
 - Callback-Based Integration: `LeaderboardCore` accepts `onUpdate` callback instead of hardcoding persistence
   - Rationale: Client persists to IndexedDB, server to JSON file—same core, different storage
-  - Pattern: Dependency injection via constructor options
+  - Pattern: Persist and notify peers from `onUpdate`; hydrate saved snapshots once instead of feeding persistence notifications back into core-owned root computation
 - Public Dependency Surfaces: Shared protocol packages must consume dependency APIs through documented methods and compatibility shims before falling back to historical internals
   - Rationale: Deployed nodes can run stale dependency builds; `getQueueSnapshot()` supports current `snapshot()` and older iterable/data-based `@llblab/uniqueue` instances
 

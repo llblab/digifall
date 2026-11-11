@@ -53,6 +53,7 @@ const core = new LeaderboardCore({
   validateRecord,
   onUpdate: (type, records) => {
     leaderboardStores[type].set(records);
+    if (libp2p) forceSync();
   },
 });
 
@@ -225,19 +226,13 @@ const forceSync = throttle(() => {
 
 RECORD_TYPES.forEach((type) => {
   const leaderboardStore = leaderboardStores[type];
-  leaderboardStore.subscribe(async (leaderboard) => {
-    if (!leaderboard || leaderboard.length === 0) return;
-    if (core.getData(type).length > 0) {
-      const rootPrev = core.getRoots()[type];
-      core.updateRoot(type);
-      return rootPrev !== core.getRoots()[type] && libp2p && forceSync();
-    }
-    Promise.allSettled(
-      leaderboard.map((record) =>
-        validateRecord(record).then((game) => core.handleRecord(game)),
-      ),
-    ).then(() => leaderboardStore.set(core.getData(type)));
-  });
+  const leaderboard = leaderboardStore.get();
+  if (!leaderboard || leaderboard.length === 0) return;
+  Promise.allSettled(
+    leaderboard.map((record) =>
+      validateRecord(record).then((game) => core.handleRecord(game)),
+    ),
+  ).then(() => leaderboardStore.set(core.getData(type)));
 });
 
 function getReplayValue(error) {
@@ -262,9 +257,13 @@ function logInvalidLocalRecord(type, record, error) {
   });
 }
 
-function normalizeLocalRecord(records, type, validatedRecord) {
-  const original = records[type];
-  if (original[KEYS.value] === validatedRecord[KEYS.value]) return;
+function normalizeLocalRecord(original, type, validatedRecord) {
+  const records = recordsStore.get();
+  if (
+    records[type] !== original ||
+    original[KEYS.value] === validatedRecord[KEYS.value]
+  )
+    return;
   recordsStore.set({
     ...records,
     [type]: {
@@ -282,9 +281,8 @@ recordsStore.subscribe((records) => {
       const typedRecord = { ...record, [KEYS.type]: type };
       try {
         const validatedRecord = await validateRecord(typedRecord);
-        normalizeLocalRecord(records, type, validatedRecord);
-        await core.handleRecord(validatedRecord);
-        leaderboardStores[type].set(core.getData(type));
+        normalizeLocalRecord(record, type, validatedRecord);
+        core.handleRecord(validatedRecord);
       } catch (error) {
         logInvalidLocalRecord(type, record, error);
       }

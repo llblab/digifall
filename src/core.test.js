@@ -141,6 +141,42 @@ test("reset cancels restored replay before playing generate sound", () => {
   assert.equal(generated, 1);
 });
 
+for (const rapid of [false, true]) {
+  test(`match accounting preserves log, energy, and timing (rapid=${rapid})`, (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const cards = createCards();
+    cards[0].value = 1;
+    cards[1].value = cards[2].value = 2;
+    const game = createGame({ cards, rapid });
+    const logs = [];
+    const energies = [];
+    game.logStore.subscribe((log) => logs.push(structuredClone(log)));
+    game.energyStore.subscribe((energy) => energies.push({ ...energy }));
+    game.phaseStore.set(PHASES.blink);
+    const match = { 1: 1, 2: 4, sum: 5, counts: 2, digits: [1, 2] };
+    assert.deepEqual(logs[1], [match]);
+    if (rapid) {
+      assert.deepEqual(energies.slice(0, 3), [
+        { buffer: 0, value: 100 },
+        { buffer: 5, value: 100 },
+        { buffer: 0, value: 105 },
+      ]);
+      assert.equal(game.phaseStore.get(), PHASES.idle);
+      assert.equal(game.energyStore.get().value, 100);
+      assert.equal(game.scoreStore.get().value, 220);
+    } else {
+      assert.deepEqual([...game.matchedIndexesStore.get()], [0, 1, 2]);
+      t.mock.timers.tick(399);
+      assert.deepEqual(energies, [{ buffer: 0, value: 100 }]);
+      t.mock.timers.tick(1);
+      assert.deepEqual(energies[1], { buffer: 5, value: 100 });
+      assert.equal(game.phaseStore.get(), PHASES.blink);
+      t.mock.timers.tick(400);
+      assert.equal(game.phaseStore.get(), PHASES.match);
+    }
+  });
+}
+
 function createDeterministicMoves(seed, count) {
   let state = seed;
   return Array.from({ length: count }, () => {

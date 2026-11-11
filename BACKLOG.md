@@ -11,6 +11,8 @@ Canonical open-work file for Digifall. Completed delivery history lives in [CHAN
   - Scope: Evaluate compatible upstream fixes or a separately validated PWA/tooling migration; do not force major transitive overrides into a gameplay hotfix
   - Remaining findings: `glob` / `minimatch` and their Workbox/PWA dependency chains; the deepmerge prototype-poisoning finding is addressed by the pinned compatible fork documented in [Build dependency hardening](README.md#build-dependency-hardening)
   - Override retirement: Return to upstream deepmerge only after it rejects input-controlled prototype keys and the installed-consumer regression tests pass; do not remove the override solely because an advisory is withdrawn
+  - Graph integrity follow-up: `npm ls --all` reports `svelte-check`'s nested `fdir@6.5.0` resolving optional peer `picomatch@^3 || ^4` to root `picomatch@2.3.2`; repair the peer layout without forcing incompatible transitive majors
+  - Rejected repair: Native offline npm 11 `dedupe --package-lock-only` leaves all implicated `fdir`/`picomatch` entries unchanged while proposing broad hoisting and an unrelated `ansi-regex` upgrade; no trial changes were retained. Investigate a targeted peer-layout repair separately rather than repeating broad deduplication
   - Exit criteria: Full `npm audit` is clean while service-worker generation and offline behavior remain correct; production-only audit is already clean
 - [ ] `Onboarding/tutorial`: Design and implement a lightweight learning path for new players
   - Exit criteria: First-time players can understand the core move rule, falling/combo behavior, energy pressure, and leaderboard goal without external explanation

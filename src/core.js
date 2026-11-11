@@ -468,27 +468,18 @@ function doPlusPhase(game) {
  */
 function doBlinkPhase(game) {
   const cards = game.cardsStore.get();
-  let { counts, digits, indexes } = getMatchedFromCards(cards);
+  const { counts, digits, indexes } = getMatchedFromCards(cards);
   game.matchedIndexesStore.set(indexes);
   const { value } = game.energyStore.get();
   if (indexes.size > 0) {
-    const indexesArray = Array.from(indexes);
-    game.logStore.update((log) =>
-      log.concat(
-        indexesArray.reduce((result, index) => {
-          const card = cards[index];
-          result[card.value] = (result[card.value] || 0) + card.value;
-          result.sum = (result.sum || 0) + card.value;
-          result.counts = counts;
-          result.digits = Array.from(digits);
-          return result;
-        }, {}),
-      ),
-    );
-    const buffer = indexesArray.reduce(
-      (result, index) => result + cards[index].value,
-      0,
-    );
+    const match = { counts, digits: Array.from(digits), sum: 0 };
+    for (const index of indexes) {
+      const { value } = cards[index];
+      match[value] = (match[value] || 0) + value;
+      match.sum += value;
+    }
+    const buffer = match.sum;
+    game.logStore.update((log) => log.concat(match));
     checkRapid(game, () => game.energyStore.set({ buffer, value }), 400);
     checkRapid(game, () => game.phaseStore.set(PHASES.match), 800);
     checkSound(game, [game.sounds.playWordUp, game.sounds.playBlink], {

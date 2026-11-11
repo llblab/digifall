@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `Leaderboard Reliability`: Replay corrections now preserve newer personal bests and unrelated local score/combo records; accepted leaderboard updates again trigger throttled peer synchronization. Startup snapshots are validated once, and personal bests no longer cause duplicate persistence writes or redundant root computation; browser regressions cover IndexedDB hydration, validation, fake-peer sync, and concurrent local updates
+- `Engine Maintenance`: Match logs and energy credit now share one matched-card total, removing duplicate aggregation and repeated digit-list allocation; added rapid/animated accounting and timing checks, with unchanged replay results for all 531 bootstrap records
+- `Dependency Cleanup`: Removed unused Gossipsub and its legacy libp2p dependency branch (45 lockfile package entries); browser, relay, and headless leaderboard retain their active Floodsub implementation
+
 ## 0.15.8 Build Dependency Hardening
 
 - `Build Hardening`: Prevented merged build configuration objects from inheriting input-controlled prototype properties by pinning a reviewed, compatible deepmerge fork; added regression checks through both Svelte and Workbox/Rollup dependency paths, without changing gameplay or saved records
